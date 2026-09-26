@@ -80,7 +80,16 @@ wait_healthy() {
 }
 
 start() {
-  loaded && launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  if loaded; then
+    launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+    # bootout also returns before launchd has finished removing the service,
+    # and bootstrapping it again in that window fails with
+    # "Bootstrap failed: 5: Input/output error".
+    for _ in $(seq 1 20); do
+      loaded || break
+      sleep 0.5
+    done
+  fi
   # bootout returns before the old process has fully released the port.
   for _ in $(seq 1 20); do
     lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1 || break
