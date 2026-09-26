@@ -297,6 +297,8 @@ export interface ApplicationEvent {
   from_status?: string | null
   to_status: string
   note?: string | null
+  /** This entry reverses the previous change (a misclick fix). */
+  is_undo?: boolean
   occurred_at: string
 }
 
@@ -313,6 +315,17 @@ export interface Application {
   job_url?: string | null
   fingerprint?: string | null
   source: string
+  /** There is a previous status to go back to. */
+  can_undo: boolean
+}
+
+/** Tabs on the Applications page; mirrors STATUS_GROUPS on the server. */
+export type ApplicationGroup = 'all' | 'active' | 'interviewing' | 'offers' | 'closed'
+
+export interface ApplicationPage {
+  items: Application[]
+  total: number
+  counts: Record<ApplicationGroup, number>
 }
 
 export interface Profile {
@@ -331,7 +344,34 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json()
 }
 
-export const fetchMyApplications = () => getJson<Application[]>('/api/applications')
+export function fetchMyApplications(params: {
+  group?: ApplicationGroup
+  q?: string
+  sort?: 'updated' | 'added'
+  limit?: number
+  offset?: number
+} = {}): Promise<ApplicationPage> {
+  const qs = new URLSearchParams()
+  if (params.group && params.group !== 'all') qs.set('group', params.group)
+  if (params.q?.trim()) qs.set('q', params.q.trim())
+  if (params.sort) qs.set('sort', params.sort)
+  if (params.limit) qs.set('limit', String(params.limit))
+  if (params.offset) qs.set('offset', String(params.offset))
+  const query = qs.toString()
+  return getJson<ApplicationPage>(`/api/applications${query ? `?${query}` : ''}`)
+}
+
+/** Go back to the previous status. Recorded in the timeline, not erased. */
+export async function undoApplicationStatus(id: string): Promise<Application> {
+  const res = await apiFetch(`/api/applications/${id}/undo`, { ...withCreds, method: 'POST' })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function removeApplication(id: string): Promise<void> {
+  const res = await apiFetch(`/api/applications/${id}`, { ...withCreds, method: 'DELETE' })
+  if (!res.ok) throw new Error(await readError(res))
+}
 
 export const fetchProfile = () => getJson<Profile>('/api/me/profile')
 

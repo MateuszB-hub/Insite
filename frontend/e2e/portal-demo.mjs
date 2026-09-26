@@ -113,6 +113,33 @@ await page.waitForSelector('text=Interview', { timeout: 15000 })
 check('candidate self-reports progress', true, 'submitted → in review → interview')
 await page.screenshot({ path: `${OUT}/2-self-reported.png`, fullPage: true })
 
+// tester's misclick: "Rejected" used to lock the application forever
+const dialogs = []
+page.on('dialog', (d) => { dialogs.push(d.message()); d.accept() })
+await page.getByRole('button', { name: 'Rejected' }).first().click()
+await page.waitForSelector('article:has-text("Rejected")', { timeout: 15000 })
+check('closing an application asks first', dialogs.some((m) => m.includes('rejected')))
+await page.getByRole('button', { name: 'Undo' }).first().click()
+await page.waitForSelector('button:has-text("Got an offer")', { timeout: 15000 })
+check('undo recovers a misclick', (await page.locator('article').first().innerText()).includes('Interview'))
+await page.getByRole('button', { name: 'History' }).first().click()
+check('history records the undo', (await page.locator('article').first().innerText()).includes('Undo → interview'))
+await page.screenshot({ path: `${OUT}/3-undo.png`, fullPage: true })
+
+// tabs with counts
+const tabs = await page.getByRole('tablist').innerText()
+check('tabs show counts', /Interviewing\s*1/.test(tabs), tabs.replace(/\s+/g, ' '))
+await page.getByRole('tab', { name: /Closed/ }).click()
+await page.waitForSelector('text=Nothing matches here.', { timeout: 15000 })
+check('closed tab is empty after the undo', true)
+await page.getByRole('tab', { name: /All/ }).click()
+await page.waitForSelector('article', { timeout: 15000 })
+
+// remove (asks first), and the job can be found and tracked again
+await page.getByRole('button', { name: /^Remove / }).first().click()
+await page.waitForSelector("text=You haven't applied to anything yet.", { timeout: 15000 })
+check('remove asks, then deletes', dialogs.some((m) => m.startsWith('Remove')))
+
 check('no JS errors', errs.length === 0, errs.slice(0, 2).join('; '))
 
 await browser.close()

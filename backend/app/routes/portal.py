@@ -6,7 +6,8 @@ Authorisation rules enforced here (never in the client):
 * Every status transition belongs to the applicant -- this is a candidate-side
   tool, recording what happened to applications they sent elsewhere.
 * Transitions are still validated against ALLOWED_TRANSITIONS so a timeline
-  cannot become incoherent (withdrawn back to submitted, say).
+  cannot become incoherent (withdrawn back to submitted, say). A misclick is
+  fixed with undo, which is recorded in the timeline rather than erasing it.
 * Every application is to an external job, tracked by content fingerprint.
 """
 
@@ -14,7 +15,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 
 from app.auth.deps import CurrentUser, DbSession
 from app.auth.sessions import audit
@@ -124,7 +125,21 @@ class EventOut(BaseModel):
     from_status: str | None = None
     to_status: str
     note: str | None = None
+    is_undo: bool = False
     occurred_at: str
+
+
+def _status_stack(a: Application) -> list[str]:
+    """Replay the timeline: each change pushes, each undo pops. The top is
+    the current status; the one below it is where an undo goes."""
+    stack: list[str] = []
+    for e in a.events:
+        if e.is_undo:
+            if stack:
+                stack.pop()
+        else:
+            stack.append(e.to_status)
+    return stack
 
 
 class ApplicationOut(BaseModel):
@@ -140,6 +155,8 @@ class ApplicationOut(BaseModel):
     created_at: str
     submitted_at: str | None = None
     events: list[EventOut] = []
+    #: Whether there is a previous status to go back to.
+    can_undo: bool = False
 
     @classmethod
     def of(cls, a: Application) -> "ApplicationOut":
@@ -158,21 +175,24 @@ class ApplicationOut(BaseModel):
             events=[
                 EventOut(
                     from_status=e.from_status, to_status=e.to_status,
-                    note=e.note, occurred_at=e.occurred_at.isoformat(),
+                    note=e.note, is_undo=bool(e.is_undo),
+                    occurred_at=e.occurred_at.isoformat(),
                 )
                 for e in a.events
             ],
+            can_undo=len(_status_stack(a)) >= 2,
         )
 
 
 def _record(db, application: Application, to_status: ApplicationStatus,
-            actor_id: str | None, note: str | None = None) -> None:
+            actor_id: str | None, note: str | None = None, *, is_undo: bool = False) -> None:
     db.add(ApplicationEvent(
         application_id=application.id,
         from_status=application.status.value,
         to_status=to_status.value,
         actor_id=actor_id,
         note=note,
+        is_undo=is_undo,
     ))
     application.status = to_status
     application.updated_at = utcnow()
@@ -245,14 +265,60 @@ def tracked_fingerprints(user: CurrentUser, db: DbSession):
     return TrackedFingerprints(fingerprints=[f for f in rows if f])
 
 
-@router.get("/applications", response_model=list[ApplicationOut])
-def my_applications(user: CurrentUser, db: DbSession):
+#: Tabs on the Applications page. Every status belongs to exactly one.
+STATUS_GROUPS: dict[str, set[ApplicationStatus]] = {
+    "active": {ApplicationStatus.draft, ApplicationStatus.submitted, ApplicationStatus.in_review},
+    "interviewing": {ApplicationStatus.interview},
+    "offers": {ApplicationStatus.offer},
+    "closed": {ApplicationStatus.rejected, ApplicationStatus.withdrawn},
+}
+
+
+class ApplicationPage(BaseModel):
+    items: list[ApplicationOut]
+    #: Matches for the current tab and search, before paging.
+    total: int
+    #: Per tab (plus "all"), for the current search.
+    counts: dict[str, int]
+
+
+@router.get("/applications", response_model=ApplicationPage)
+def my_applications(
+    user: CurrentUser,
+    db: DbSession,
+    group: str = Query("all", pattern="^(all|active|interviewing|offers|closed)$"),
+    q: str | None = Query(None, max_length=100),
+    sort: str = Query("updated", pattern="^(updated|added)$"),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """One page of your applications, by tab, with an optional title/company search."""
+    base = select(Application).where(Application.applicant_id == user.id)
+    if q and q.strip():
+        like = f"%{q.strip().lower()}%"
+        base = base.where(or_(func.lower(Application.job_title).like(like),
+                              func.lower(Application.company).like(like)))
+
+    by_status = _status_counts(db, base)
+    counts = {name: sum(by_status.get(s, 0) for s in members)
+              for name, members in STATUS_GROUPS.items()}
+    counts["all"] = sum(by_status.values())
+
+    listing = base
+    if group != "all":
+        listing = listing.where(Application.status.in_(STATUS_GROUPS[group]))
+    order = Application.updated_at if sort == "updated" else Application.created_at
     rows = db.scalars(
-        select(Application)
-        .where(Application.applicant_id == user.id)
-        .order_by(Application.created_at.desc())
+        listing.order_by(order.desc(), Application.id).limit(limit).offset(offset)
     ).all()
-    return [ApplicationOut.of(a) for a in rows]
+    return ApplicationPage(items=[ApplicationOut.of(a) for a in rows],
+                           total=counts[group], counts=counts)
+
+
+def _status_counts(db, base) -> dict[ApplicationStatus, int]:
+    sub = base.with_only_columns(Application.status).subquery()
+    return {ApplicationStatus(status): n for status, n in
+            db.execute(select(sub.c.status, func.count()).group_by(sub.c.status)).all()}
 
 
 @router.get("/applications/{application_id}", response_model=ApplicationOut)
@@ -289,4 +355,44 @@ def update_status(application_id: str, payload: StatusUpdate,
     audit(db, "application.status", user_id=user.id,
           detail=f"-> {payload.status.value}")
     db.flush()
+    # The new event was added by id, not through the relationship; reload so
+    # the timeline in the response includes it.
+    db.refresh(application)
     return ApplicationOut.of(application)
+
+
+def _owned(db, application_id: str, user) -> Application:
+    application = db.get(Application, application_id)
+    # Ownership check, not just existence: never leak another applicant's row.
+    if application is None or application.applicant_id != user.id:
+        raise HTTPException(404, "Application not found")
+    return application
+
+
+@router.post("/applications/{application_id}/undo", response_model=ApplicationOut)
+def undo_status(application_id: str, user: CurrentUser, db: DbSession):
+    """Go back to the previous status (tester feedback: one misclick used to
+    lock an application forever). Recorded in the timeline, not erased, and
+    repeatable: undoing twice steps back twice."""
+    application = _owned(db, application_id, user)
+    stack = _status_stack(application)
+    if len(stack) < 2:
+        raise HTTPException(409, "Nothing to undo.")
+    undone, target = stack[-1], ApplicationStatus(stack[-2])
+    _record(db, application, target, user.id,
+            f"Undid \"{undone.replace('_', ' ')}\"", is_undo=True)
+    if target is ApplicationStatus.draft:
+        application.submitted_at = None
+    audit(db, "application.undo", user_id=user.id, detail=f"{undone} -> {target.value}")
+    db.flush()
+    db.refresh(application)
+    return ApplicationOut.of(application)
+
+
+@router.delete("/applications/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_application(application_id: str, user: CurrentUser, db: DbSession):
+    """Remove an application and its timeline (e.g. marked applied by mistake)."""
+    application = _owned(db, application_id, user)
+    db.delete(application)
+    audit(db, "application.remove", user_id=user.id)
+    db.flush()
