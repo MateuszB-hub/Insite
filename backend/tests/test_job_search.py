@@ -266,7 +266,7 @@ def test_one_failing_place_does_not_sink_the_others(monkeypatch):
 
 def test_no_location_searches_nationwide(monkeypatch):
     seen = _fake_adzuna(monkeypatch, {None: [_job(0, "US")]})
-    result = asyncio.run(search_jobs("engineer", None))
+    result = asyncio.run(search_jobs("engineer", None, strategy="words"))
     assert seen == [None]
     assert len(result.postings) == 1
 
@@ -332,7 +332,7 @@ def test_too_few_stated_fetches_more_pages(monkeypatch):
     # 20 per page for limit=10; stated matches only appear on page 3.
     served = _estimated_page(40) + [_paid("zulu", 150000, 150000, "0")] + _estimated_page(19, 40)
     _fake_adzuna(monkeypatch, {None: served}, count=500, requests=requests)
-    result = asyncio.run(search_jobs("engineer", salary_min=100000, limit=10))
+    result = asyncio.run(search_jobs("engineer", salary_min=100000, limit=10, strategy="words"))
     assert [r["page"] for r in requests] == [1, 2, 3]
     assert result.pages_fetched == 3
     assert [p.id for p in result.postings] == ["zulu"]
@@ -348,35 +348,66 @@ def test_no_extra_pages_without_filters(monkeypatch):
 def test_no_extra_pages_when_the_source_is_exhausted(monkeypatch):
     requests = []
     _fake_adzuna(monkeypatch, {None: _estimated_page(5)}, count=5, requests=requests)
-    asyncio.run(search_jobs("engineer", salary_min=100000, limit=10))
+    asyncio.run(search_jobs("engineer", salary_min=100000, limit=10, strategy="words"))
     assert [r["page"] for r in requests] == [1]
 
 
-# --- phrase search: "QA lead" means QA leads, not every "lead" -------------
+# --- title matching: "QA lead" means QA leads, not every "lead" -------------
 
-def test_multi_word_query_is_searched_as_a_phrase(monkeypatch):
+def test_query_is_matched_against_the_title(monkeypatch):
     requests = []
-    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=100, requests=requests)
-    result = asyncio.run(search_jobs("QA lead"))
-    assert requests[0]["what_phrase"] == "QA lead"
+    _fake_adzuna(monkeypatch, {None: [_job(i, "US") for i in range(4)]}, count=100,
+                 requests=requests)
+    result = asyncio.run(search_jobs("QA lead", limit=4))
+    assert requests[0]["title_only"] == "QA lead"
     assert "what" not in requests[0]
-    assert result.match == "phrase"
+    assert result.match == "title"
 
 
-def test_one_word_query_is_searched_as_a_word(monkeypatch):
+def test_full_page_of_title_matches_costs_no_extra_request(monkeypatch):
     requests = []
-    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=100, requests=requests)
-    result = asyncio.run(search_jobs("engineer"))
-    assert requests[0]["what"] == "engineer"
-    assert result.match == "words"
+    _fake_adzuna(monkeypatch, {None: [_job(i, "US") for i in range(4)]}, count=100,
+                 requests=requests)
+    result = asyncio.run(search_jobs("QA lead", limit=4))
+    assert len(requests) == 1
+    assert result.loose_matches == []
 
 
-def test_too_few_phrase_hits_fall_back_to_words(monkeypatch):
+def test_short_title_matches_add_loose_matches_apart(monkeypatch):
     requests = []
-    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=2, requests=requests)
-    result = asyncio.run(search_jobs("backend dev lead"))
-    assert [("what_phrase" in r, "what" in r) for r in requests] == [(True, False), (False, True)]
-    assert result.match == "words"
+    title_hit = posting(id="t", title="QA Lead", description="Lead our QA team.")
+    mention = posting(id="m", title="Lead Carpenter", description="Some QA of finished work.")
+
+    def pages_for(request_params):
+        return [title_hit] if "title_only" in request_params else [title_hit, mention]
+
+    # Serve different adverts for title vs word matching.
+    real = httpx.AsyncClient
+
+    def handler(request):
+        params = dict(request.url.params)
+        requests.append(params)
+        return httpx.Response(200, json={"count": 2, "results": pages_for(params)})
+
+    monkeypatch.setattr(job_search.httpx, "AsyncClient",
+                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(job_search, "_record_sightings", lambda postings: {})
+    monkeypatch.setenv("ADZUNA_APP_ID", "id")
+    monkeypatch.setenv("ADZUNA_APP_KEY", "key")
+
+    # This test is about the loose list; spelling variants are tested elsewhere.
+    monkeypatch.setattr(job_search.abbreviations, "variants", lambda query: [])
+    result = asyncio.run(search_jobs("QA lead", limit=10))
+    assert [("title_only" in r, "what" in r) for r in requests] == [(True, False), (False, True)]
+    assert [p.id for p in result.postings] == ["t"]
+    # The title match is not repeated among the loose ones.
+    assert [p.id for p in result.loose_matches] == ["m"]
+
+
+def test_unknown_strategy_is_refused(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: []}, count=0)
+    with pytest.raises(ValueError):
+        asyncio.run(search_jobs("engineer", strategy="phrase"))
 
 
 # --- job type: filtered on what adverts state, the rest counted ------------
@@ -425,9 +456,9 @@ def test_posting_reports_its_types():
 def test_identical_search_is_served_from_the_cache(monkeypatch):
     requests = []
     _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=10, requests=requests)
-    first = asyncio.run(search_jobs("engineer", max_days_old=7))
-    again = asyncio.run(search_jobs("  Engineer ", max_days_old=7))
-    other = asyncio.run(search_jobs("engineer", max_days_old=14))
+    first = asyncio.run(search_jobs("engineer", max_days_old=7, strategy="words"))
+    again = asyncio.run(search_jobs("  Engineer ", max_days_old=7, strategy="words"))
+    other = asyncio.run(search_jobs("engineer", max_days_old=14, strategy="words"))
     assert again is first
     assert other is not first
     assert len(requests) == 2

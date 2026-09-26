@@ -33,6 +33,8 @@ from typing import Any
 
 import httpx
 
+from app.services.labor import abbreviations
+
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.adzuna.com/v1/api"
@@ -183,9 +185,16 @@ class SearchResult:
     #: Job-type filter: adverts that didn't state a type / stated another.
     excluded_type_unstated: int = 0
     excluded_other_type: int = 0
-    #: "phrase" when the whole query was matched as a phrase; "words" when it
-    #: was matched word by word (one-word queries, or too few phrase hits).
-    match: str = "words"
+    #: How the query was matched: "title" (every word in the job title) or
+    #: "words" (anywhere in the advert).
+    match: str = "title"
+    #: With title matching: adverts that only mention the words somewhere,
+    #: fetched when title matches run short. Shown apart and labelled, never
+    #: mixed in -- this is where off-topic results come from.
+    loose_matches: list["JobPosting"] = field(default_factory=list)
+    #: Other spellings of the title also searched ("quality assurance lead"
+    #: for "QA lead"), learned from O*NET. Empty when none were needed.
+    also_searched: list[str] = field(default_factory=list)
 
 
 def classify_salary(raw: dict[str, Any]) -> SalarySource:
@@ -380,9 +389,18 @@ def _interleave(pages: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
 #: page is one Adzuna request, and the free tier is rate-limited.
 MAX_PAGES = 3
 
-#: Fewer phrase hits than this, across all places, and the words are matched
-#: instead.
-PHRASE_MIN_RESULTS = 5
+#: How a query is matched against adverts, measured by app/scripts/search_eval.py
+#: (12 role x place cases, mostly smaller places; on-topic / shown):
+#:   words   every word anywhere in the advert       261/293  89%
+#:   phrase  the exact phrase anywhere (removed)     246/262  94%
+#:   title   every word in the job title, any order  245/245 100%
+#: Matching anywhere in the advert is what let "QA lead" in a small market
+#: return "lead" jobs whose description merely mentions QA; the title is
+#: where an advert says what the job is. Words stay for the loose section.
+STRATEGIES = ("words", "title")
+
+#: Loose (word-anywhere) matches shown apart when title matches run short.
+LOOSE_MAX = 10
 
 #: Identical searches within this window reuse the result: the tester asked
 #: for previous searches to be remembered, and every search spends Adzuna
@@ -394,6 +412,24 @@ _search_cache: dict[tuple, tuple[float, "SearchResult"]] = {}
 
 def clear_search_cache() -> None:
     _search_cache.clear()
+
+
+async def _loose_matches(base, query, targets, *, fetch_page, taken, filtered) -> list["JobPosting"]:
+    """One page of word-anywhere matches per place, minus the title matches.
+
+    Only called when title matching found fewer adverts than a page shows,
+    so a well-served search costs no extra request.
+    """
+    del base["title_only"]
+    base["what"] = query
+    async with httpx.AsyncClient(timeout=40.0) as client:
+        outcomes = await asyncio.gather(
+            *(fetch_page(client, t, 1) for t in targets), return_exceptions=True)
+    raws = [o.get("results", []) for o in outcomes if not isinstance(o, BaseException)]
+    postings = [to_posting(raw) for raw in _interleave(raws)]
+    postings, _ = _collapse_duplicates(postings)
+    fresh = [p for p in postings if p.fingerprint not in taken]
+    return filtered(fresh).kept[:LOOSE_MAX]
 
 
 @dataclass
@@ -485,6 +521,7 @@ async def search_jobs(
     max_days_old: int | None = None,
     job_type: str | None = None,
     limit: int = 30,
+    strategy: str = "title",
 ) -> SearchResult:
     """Search postings and apply filters that never fabricate certainty.
 
@@ -505,20 +542,21 @@ async def search_jobs(
     cache_key = (
         " ".join(query.lower().split()), tuple(p.lower() for p in places), salary_min,
         require_stated_salary, remote_only, include_conflicted_remote,
-        collapse_duplicates, max_days_old, job_type, limit,
+        collapse_duplicates, max_days_old, job_type, limit, strategy,
     )
     cached = _search_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
         return cached[1]
 
     per_page = min(50, max(limit * 2, 20))
-    # Tester: "QA lead" matched word by word found "lead" jobs with no QA in
-    # them. Adzuna's what_phrase keeps the words together (653 -> 116 adverts
-    # in a week, all QA leads); a one-word query is the same either way.
-    phrase = len(query.split()) >= 2
+    # Mentor: "QA lead" found "lead" jobs with no QA in them. Adzuna's
+    # title_only needs every word in the job title, in any order ("Lead QA
+    # Engineer" counts); see STRATEGIES for how that was measured.
+    if strategy not in STRATEGIES:
+        raise ValueError(f"unknown strategy {strategy!r}")
     base: dict[str, Any] = {
         "app_id": app_id, "app_key": app_key,
-        "what_phrase" if phrase else "what": query,
+        "title_only" if strategy == "title" else "what": query,
         # Ask for more than we need: honest filtering discards a lot.
         "results_per_page": per_page,
     }
@@ -531,15 +569,20 @@ async def search_jobs(
         base["max_days_old"] = max_days_old
     targets: list[str | None] = list(places) or [None]
 
-    async def fetch(client: httpx.AsyncClient, place: str | None, page: int) -> dict[str, Any]:
+    async def fetch(client: httpx.AsyncClient, place: str | None, page: int,
+                    title: str | None = None) -> dict[str, Any]:
         params = dict(base)
         if place:
             params["where"] = place
+        if title:
+            params["title_only"] = title
         response = await client.get(f"{BASE_URL}/jobs/{COUNTRY}/search/{page}", params=params)
         response.raise_for_status()
         return response.json()
 
-    result = SearchResult(locations_searched=places, match="phrase" if phrase else "words")
+    result = SearchResult(
+        locations_searched=places,
+        match=strategy)
     #: Raw adverts per place, in page order.
     pages: dict[str | None, list[dict[str, Any]]] = {}
     counts: dict[str | None, int] = {}
@@ -576,14 +619,25 @@ async def search_jobs(
 
     async with httpx.AsyncClient(timeout=40.0) as client:
         await first_pages(client)
-        # A phrase nobody uses word for word ("backend dev lead") would come
-        # back nearly empty; then match the words instead, and say so.
-        if phrase and sum(counts.values()) < PHRASE_MIN_RESULTS:
-            base.pop("what_phrase")
-            base["what"] = query
-            result.match = "words"
-            await first_pages(client)
         result.pages_fetched = 1
+
+        # Fewer title matches than a page holds: also try the other ways the
+        # title is written, learned from O*NET ("QA lead" -> "quality
+        # assurance lead", "registered nurse" -> "RN"). Well-served searches
+        # cost nothing extra.
+        extra_total = 0
+        if strategy == "title" and sum(counts.values()) < per_page:
+            for variant in abbreviations.variants(query):
+                outcomes = await asyncio.gather(
+                    *(fetch(client, t, 1, title=variant) for t in pages), return_exceptions=True)
+                found = 0
+                for target, outcome in zip(list(pages), outcomes):
+                    if isinstance(outcome, BaseException):
+                        continue
+                    pages[target].extend(outcome.get("results", []))
+                    found += outcome.get("count") or 0
+                result.also_searched.append(variant)
+                extra_total += found
 
         # Filters that discard most adverts get another page or two, but only
         # while places still have more to give.
@@ -602,7 +656,7 @@ async def search_jobs(
                     pages[target].extend(outcome.get("results", []))
             result.pages_fetched = page
 
-    result.total_available = sum(counts.values()) if counts else None
+    result.total_available = (sum(counts.values()) + extra_total) if counts else None
 
     candidates = build()
 
@@ -629,6 +683,12 @@ async def search_jobs(
     result.excluded_below_salary = out.excluded_below_salary
     result.excluded_type_unstated = out.excluded_type_unstated
     result.excluded_other_type = out.excluded_other_type
+
+    # Title matches ran short: say what else merely mentions the words, apart.
+    if strategy == "title" and len(result.postings) < limit:
+        result.loose_matches = await _loose_matches(
+            base, query, targets, fetch_page=fetch, taken={p.fingerprint for p in candidates},
+            filtered=filtered)
 
     if len(_search_cache) >= SEARCH_CACHE_MAX:
         _search_cache.pop(next(iter(_search_cache)), None)
