@@ -5,13 +5,18 @@ import {
   Search, Loader2, MapPin, Building2, ExternalLink,
   TriangleAlert, Info, Copy, History, CheckCircle2, Plus, X,
 } from 'lucide-react'
+import { useAuth } from '../auth/AuthContext'
+import { loadRecent, saveRecent } from '../lib/recent'
 import {
+  JOB_TYPE_LABELS,
   MAX_JOB_LOCATIONS,
+  fetchProfile,
   fetchTrackedFingerprints,
   searchJobs,
   trackJob,
   type JobPosting,
   type JobSearchResponse,
+  type JobType,
 } from '../lib/api'
 import { PostedAgo, SalaryLine } from './JobBits'
 
@@ -21,6 +26,29 @@ const AGE_CHOICES = [
   { value: '30', label: 'Past 30 days' },
   { value: '', label: 'Any time' },
 ]
+
+const TYPE_CHOICES: { value: JobType | ''; label: string }[] = [
+  { value: '', label: 'Any type' },
+  ...(Object.entries(JOB_TYPE_LABELS) as [JobType, string][]).map(([value, label]) => ({ value, label })),
+]
+
+interface RecentSearch {
+  q: string
+  places: string[]
+  jobType: JobType | ''
+}
+
+const recentKey = (r: RecentSearch) =>
+  `${r.q.toLowerCase()}|${r.places.join(',').toLowerCase()}|${r.jobType}`
+
+/** The site a link opens, so a job board is never mistaken for the employer. */
+function siteOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'another site'
+  }
+}
 
 export default function JobSearch() {
   //: Home links here as /jobs?q=...&where=..., and the search runs on arrival.
@@ -37,6 +65,11 @@ export default function JobSearch() {
   const [requireStated, setRequireStated] = useState(false)
   const [remoteOnly, setRemoteOnly] = useState(false)
   const [includeConflicted, setIncludeConflicted] = useState(false)
+  const [jobType, setJobType] = useState<JobType | ''>('')
+  const { user } = useAuth()
+  const [recent, setRecent] = useState<RecentSearch[]>(() => loadRecent<RecentSearch>('jobs', user?.id))
+  //: Mentor: Find Roles "should use your profile information".
+  const [fromProfile, setFromProfile] = useState(false)
 
   const [data, setData] = useState<JobSearchResponse | null>(null)
   //: Fingerprints of jobs already applied to. Matching on content rather
@@ -48,6 +81,22 @@ export default function JobSearch() {
 
   useEffect(() => {
     fetchTrackedFingerprints().then(setTracked).catch(() => { /* non-fatal */ })
+  }, [])
+
+  // With no search in the link, start from the profile's role and place.
+  useEffect(() => {
+    if (params.get('q')) return
+    fetchProfile()
+      .then((p) => {
+        const role = p.current_role?.trim()
+        if (!role) return
+        setQ((cur) => cur || role)
+        const place = p.location?.trim()
+        if (place) setPlaces((cur) => (cur.length ? cur : [place]))
+        setFromProfile(true)
+      })
+      .catch(() => { /* no profile: the form just starts empty */ })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const markApplied = async (job: JobPosting) => {
@@ -83,19 +132,21 @@ export default function JobSearch() {
     setPlaceDraft('')
   }
 
-  const runSearch = async (query: string, where: string[]) => {
+  const runSearch = async (query: string, where: string[], type: JobType | '' = jobType) => {
     setLoading(true)
     setError(null)
     try {
       setData(await searchJobs({
         q: query,
         where,
+        jobType: type || undefined,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         maxDaysOld: maxDaysOld ? Number(maxDaysOld) : undefined,
         requireStatedSalary: requireStated,
         remoteOnly,
         includeConflictedRemote: includeConflicted,
       }))
+      setRecent(saveRecent('jobs', user?.id, { q: query, places: where, jobType: type }, recentKey))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed')
     } finally {
@@ -111,6 +162,15 @@ export default function JobSearch() {
     setPlaces(where)
     setPlaceDraft('')
     await runSearch(q.trim(), where)
+  }
+
+  const rerun = (r: RecentSearch) => {
+    setQ(r.q)
+    setPlaces(r.places)
+    setPlaceDraft('')
+    setJobType(r.jobType)
+    setFromProfile(false)
+    void runSearch(r.q, r.places, r.jobType)
   }
 
   // Arriving with ?q= (from Home) runs that search once, with the defaults.
@@ -143,7 +203,9 @@ export default function JobSearch() {
                   <MapPin className="w-3.5 h-3.5" /> {job.location}
                 </span>
               )}
-              {job.contract_time && <span>{job.contract_time.replace('_', ' ')}</span>}
+              {job.job_types && job.job_types.length > 0 && (
+                <span>{job.job_types.map((t) => JOB_TYPE_LABELS[t]).join(' · ')}</span>
+              )}
       <PostedAgo created={job.created} />
             </div>
           </div>
@@ -190,9 +252,11 @@ export default function JobSearch() {
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-4">
+          {/* Mentor: "the url for the link makes it look fishy". Say where it goes. */}
           <a href={job.url} target="_blank" rel="noopener noreferrer"
+            title={`Opens the listing on ${siteOf(job.url)}, a job board. From there, apply on the employer's own site.`}
             className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline">
-            View posting <ExternalLink className="w-3.5 h-3.5" />
+            View listing on {siteOf(job.url)} <ExternalLink className="w-3.5 h-3.5" />
           </a>
 
           {tracked.has(job.fingerprint) ? (
@@ -218,8 +282,10 @@ export default function JobSearch() {
 
   const excluded = data
     ? data.excluded_estimated_salary + data.excluded_no_salary +
-      data.excluded_not_remote + data.excluded_below_salary
+      data.excluded_not_remote + data.excluded_below_salary +
+      (data.excluded_type_unstated ?? 0) + (data.excluded_other_type ?? 0)
     : 0
+  const multiWord = q.trim().split(/\s+/).length >= 2
   const folded = data?.collapsed_duplicates ?? 0
 
   const field =
@@ -240,8 +306,11 @@ export default function JobSearch() {
             <label htmlFor="q" className="block text-sm font-medium text-slate-700 mb-1">
               Role
             </label>
-            <input id="q" value={q} onChange={(e) => setQ(e.target.value)}
+            <input id="q" value={q} onChange={(e) => { setQ(e.target.value); setFromProfile(false) }}
               placeholder="e.g. Registered Nurse" className={field} />
+            {fromProfile && (
+              <p className="text-xs text-slate-500 mt-1">Filled in from your profile. Change it to search anything.</p>
+            )}
           </div>
           <div className="flex-1">
             <label htmlFor="where" className="block text-sm font-medium text-slate-700 mb-1">
@@ -303,6 +372,13 @@ export default function JobSearch() {
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
+            Type
+            <select id="type" value={jobType} onChange={(e) => setJobType(e.target.value as JobType | '')}
+              className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none">
+              {TYPE_CHOICES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={requireStated}
               onChange={(e) => setRequireStated(e.target.checked)}
               className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
@@ -330,6 +406,18 @@ export default function JobSearch() {
         </div>
       </form>
 
+      {!data && !loading && recent.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6 text-sm" aria-label="Recent searches">
+          <span className="text-slate-500">Recent:</span>
+          {recent.map((r) => (
+            <button key={recentKey(r)} type="button" onClick={() => rerun(r)}
+              className="px-3 py-1 rounded-full border border-slate-300 bg-white text-slate-700 hover:border-indigo-400">
+              {r.q}{r.places.length ? ` · ${r.places.join(', ')}` : ''}{r.jobType ? ` · ${JOB_TYPE_LABELS[r.jobType]}` : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm mb-4">
           {error}
@@ -346,6 +434,14 @@ export default function JobSearch() {
                 for the other{data.locations_searched.length - data.failed_locations.length === 1 ? '' : 's'}.
               </p>
             </div>
+          )}
+
+          {multiWord && data.match && (
+            <p className="text-sm text-slate-500 mb-3" data-testid="match-note">
+              {data.match === 'phrase'
+                ? <>Matching the exact phrase "{q.trim()}".</>
+                : <>Few adverts use the exact phrase "{q.trim()}", so these match its words anywhere in the advert.</>}
+            </p>
           )}
 
           {/* Explain a short list rather than letting it look broken. */}
@@ -378,6 +474,12 @@ export default function JobSearch() {
                 )}
                 {data.excluded_not_remote > 0 && (
                   <li>{data.excluded_not_remote} said remote but were tied to a location</li>
+                )}
+                {(data.excluded_type_unstated ?? 0) > 0 && (
+                  <li>{data.excluded_type_unstated} didn't say whether they're {jobType ? JOB_TYPE_LABELS[jobType].toLowerCase() : 'that type'} (most adverts don't)</li>
+                )}
+                {(data.excluded_other_type ?? 0) > 0 && (
+                  <li>{data.excluded_other_type} were a different type</li>
                 )}
               </ul>
             </div>
