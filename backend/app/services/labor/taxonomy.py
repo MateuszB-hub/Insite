@@ -240,6 +240,34 @@ def transferable(
     return [occ for _, occ in scored[:limit]]
 
 
+#: A skill counts toward the shortfall only when the target job really uses
+#: it and the gap is bigger than O*NET's own measurement noise (standard
+#: errors run ~0.3-0.5 on the 0-7 level scale). Summing every tiny gap let
+#: skills a job barely needs ("Repairing" for a systems analyst) swamp the
+#: ones that matter.
+SHORTFALL_MIN_GAP = 0.5
+SHORTFALL_MIN_LEVEL = 3.0
+
+
+def skill_shortfall(from_code: str, to_code: str) -> float | None:
+    """How far `to_code` needs more skill than `from_code` has, summed.
+
+    Only the skills the target job uses (level >= SHORTFALL_MIN_LEVEL), and
+    only gaps of at least SHORTFALL_MIN_GAP. Being better at something the
+    target needs less of does not offset a real gap. None when either side
+    has no skill data (O*NET has none for some occupations, e.g. most
+    military).
+    """
+    mine = (_by_code().get(from_code) or {}).get("skills")
+    theirs = (_by_code().get(to_code) or {}).get("skills")
+    if not mine or not theirs:
+        return None
+    return sum(
+        t - m for m, t in zip(mine, theirs)
+        if t - m >= SHORTFALL_MIN_GAP and t >= SHORTFALL_MIN_LEVEL
+    )
+
+
 def _gaps(mine: list[float], theirs: list[float], top: int = 3) -> list[dict]:
     """Dimensions where the target needs more than the person currently has."""
     names = skill_names()

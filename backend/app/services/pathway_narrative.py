@@ -285,7 +285,8 @@ async def attach_narrative(
         guidance = clean["by_code"].get(pathway.get("code"))
         if guidance:
             pathway["rationale"] = guidance["rationale"]
-            pathway["readiness"] = guidance["readiness"]
+            # Readiness from O*NET data wins; the model's guess only fills gaps.
+            pathway["readiness"] = pathway.get("readiness") or guidance["readiness"]
             pathway["steps"] = guidance["steps"]
 
     report["narrative"] = {

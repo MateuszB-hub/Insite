@@ -5,7 +5,8 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.services.career_service import build_career_pathway
+from app.auth.deps import CurrentUser
+from app.services.career_service import build_career_pathway, narrate_career_pathway
 from app.services.labor import labor_status
 
 logger = logging.getLogger(__name__)
@@ -125,8 +126,10 @@ async def get_labor_status() -> list[DataSourceInfo]:
     return [DataSourceInfo(**s) for s in labor_status()]
 
 
+# Both pathway routes need a signed-in user: each call spends BLS/Adzuna
+# quota and, for the narrative, minutes of model time.
 @router.post("/career-pathway", response_model=CareerPathwayResponse)
-async def career_pathway(request: CareerPathwayRequest) -> CareerPathwayResponse:
+async def career_pathway(request: CareerPathwayRequest, user: CurrentUser) -> CareerPathwayResponse:
     """Adjacent roles, wages and hiring evidence for a role and horizon."""
     try:
         report = await build_career_pathway(
@@ -142,6 +145,34 @@ async def career_pathway(request: CareerPathwayRequest) -> CareerPathwayResponse
         raise HTTPException(
             status_code=502,
             detail="Unable to build the career pathway right now. Please retry.",
+        )
+
+    return CareerPathwayResponse(**report)
+
+
+@router.post("/career-pathway/narrative", response_model=CareerPathwayResponse)
+async def career_pathway_narrative(
+    request: CareerPathwayRequest, user: CurrentUser
+) -> CareerPathwayResponse:
+    """The same report with the model-written summary attached.
+
+    The page asks for the facts first (include_narrative=false) and shows
+    them at once; this slower call follows. A model failure still returns
+    the facts, with `narrative_status` saying why there is no summary.
+    """
+    try:
+        report = await narrate_career_pathway(
+            current_role=request.current_role,
+            industry=request.industry,
+            horizon_months=request.horizon_months,
+            location=request.location,
+            provider_name=request.provider,
+        )
+    except Exception:
+        logger.exception("career-pathway narrative request failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to write the summary right now. Please retry.",
         )
 
     return CareerPathwayResponse(**report)
