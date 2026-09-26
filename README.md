@@ -166,8 +166,12 @@ Tavily.
 
 - **CI** (GitLab): backend tests, frontend typecheck and build, SAST and
   secret detection on every change.
-- **Environments:** dev → staging → live. A release is a git tag; it deploys
-  to staging, and the same tag is promoted to live.
+- **Environments:** dev → staging → live. Every merge to `main` is tagged
+  as a release (`vYYYY.MM.DD-N`) automatically; the tag deploys itself to
+  staging and is verified there, and the same build goes live with one
+  manual pipeline job, which only ships what staging is running. The
+  previous release is kept, so rollback is one job as well. Release and
+  deploy jobs run on a protected runner on the host machine.
 - **Production mode** (`serve.sh`) serves the built frontend from the API
   process on one origin, runs migrations, and refuses to start with insecure
   settings (non-HTTPS URL, insecure cookies, localhost CORS, undeliverable

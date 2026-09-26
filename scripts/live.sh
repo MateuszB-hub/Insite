@@ -7,6 +7,10 @@
 #   ./scripts/live.sh deploy            legacy: working copy straight to live,
 #                                       no checks (kept until the pipeline
 #                                       cutover is verified; urgent fixes only)
+#   ./scripts/live.sh rollback [live|staging]   back to the release before
+#                                       the last deploy (app files only)
+#   ./scripts/live.sh verify ENV SHA    exit non-zero unless ENV answers and
+#                                       runs commit SHA (used by CI)
 #   ./scripts/live.sh refresh-staging   copy the newest live backup into the
 #                                       staging database
 #   ./scripts/live.sh status  [live|staging|all]   (default: all)
@@ -175,6 +179,14 @@ Terminal window. Press Ctrl+C there first, then re-run this."
   fi
   ( cd "$ROOT/frontend" && npm run build >/dev/null ) || die "frontend build failed"
 
+  # Keep the release being replaced, so `rollback` is one step. App files
+  # only: database migrations are not undone, which is why they must stay
+  # additive (a new column the old code simply ignores).
+  if [ -f "$DIR/VERSION" ]; then
+    say "-> keeping the current release in $DIR.prev"
+    rsync -a --delete --exclude 'logs/' "$DIR/" "$DIR.prev/"
+  fi
+
   say "-> copying app to $DIR"
   mkdir -p "$DIR/backend" "$DIR/frontend" "$DIR/logs"
   # --delete removes files deleted here; excluded paths (the deployed venv
@@ -259,6 +271,25 @@ promote() {
   deploy_to
 }
 
+rollback() {
+  use_env "${1:-live}"
+  [ -f "$DIR.prev/VERSION" ] || die "no previous release kept in $DIR.prev"
+  say "-> rolling $ENV back to $(awk '{print $1, substr($2,1,8)}' "$DIR.prev/VERSION")"
+  rsync -a --delete --exclude 'logs/' "$DIR.prev/" "$DIR/"
+  start
+}
+
+# verify ENV SHA: the environment answers and runs exactly that commit.
+verify() {
+  use_env "$1"
+  want="$2"
+  [ -n "$want" ] || die "usage: live.sh verify live|staging COMMIT_SHA"
+  wait_healthy || die "$ENV is not answering on :$PORT"
+  got="$(deployed_commit "$DIR")"
+  [ "$got" = "$want" ] || die "$ENV runs ${got:0:8}, expected ${want:0:8}"
+  say "OK  $ENV runs ${want:0:8} and answers on :$PORT"
+}
+
 refresh_staging() {
   use_env staging
   latest="$(ls -t "$BACKUPS"/insite-*.sql.gz.enc 2>/dev/null | head -n 1 || true)"
@@ -298,6 +329,8 @@ target="${2:-}"
 case "$cmd" in
   stage)            stage ;;
   promote)          promote ;;
+  rollback)         rollback "${target:-live}" ;;
+  verify)           verify "${target:-}" "${3:-}" ;;
   deploy)           use_env live; deploy_to ;;
   refresh-staging)  refresh_staging ;;
   status)

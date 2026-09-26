@@ -1,16 +1,22 @@
 # Insite CI/CD
 #
-#   merge request / push to main  ->  tests + security scans
-#   tag v*                        ->  tests -> deploy to staging (added in step 6)
-#                                     -> manual "promote to live"
+#   merge request        ->  tests + security scans
+#   merge to main        ->  tests -> release:tag (next vYYYY.MM.DD-N)
+#   tag v*               ->  tests -> deploy:staging (automatic, then verified)
+#                                  -> deploy:live   (manual: one click)
+#                                  -> rollback:live (manual, after a deploy)
 #
 # Test jobs run on GitLab's shared runners and need no secrets: the backend
-# suite uses a throwaway SQLite database. Deploy jobs (later) run only on the
-# protected runner on the Mac, where the real env files live.
+# suite uses a throwaway SQLite database. Release and deploy jobs run only on
+# the Mac's runner (tag `insite-mac`), which is registered as protected: it
+# takes jobs from protected refs only (main and v* tags), and it is where the
+# env files, the services and the Keychain token live.
 
 stages:
   - test
+  - release
   - deploy
+  - live
 
 workflow:
   rules:
@@ -53,3 +59,65 @@ test:frontend:
     - npm ci --cache "$CI_PROJECT_DIR/.cache/npm" --prefer-offline
     - npm run typecheck
     - npm run build
+
+# --- release & deploy (Mac runner) ---------------------------------------
+
+.mac:
+  tags: [insite-mac]
+
+release:tag:
+  extends: .mac
+  stage: release
+  needs: ["test:backend", "test:frontend"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+  script:
+    - scripts/release_tag.sh "$CI_COMMIT_SHA"
+
+deploy:staging:
+  extends: .mac
+  stage: deploy
+  needs: ["test:backend", "test:frontend"]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  resource_group: staging
+  environment:
+    name: staging
+    url: https://staging.mateuszbieda.dev
+  script:
+    - scripts/live.sh stage
+    - scripts/live.sh verify staging "$CI_COMMIT_SHA"
+
+deploy:live:
+  extends: .mac
+  stage: live
+  needs: ["deploy:staging"]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+      when: manual
+  resource_group: production
+  environment:
+    name: production
+    url: https://app.mateuszbieda.dev
+  script:
+    # promote refuses anything staging is not running, so this ships exactly
+    # what deploy:staging just deployed and verified.
+    - scripts/live.sh promote
+    - scripts/live.sh verify live "$CI_COMMIT_SHA"
+
+rollback:live:
+  extends: .mac
+  stage: live
+  needs: ["deploy:live"]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+      when: manual
+  resource_group: production
+  # A rollback is a deployment too (of the previous release), so GitLab
+  # records it against the production environment.
+  environment:
+    name: production
+    url: https://app.mateuszbieda.dev
+  script:
+    - scripts/live.sh rollback live
+    - scripts/live.sh status live
