@@ -18,13 +18,16 @@ VENV="$ROOT/backend/.venv"
 PORT="${PORT:-8080}"
 
 cd "$ROOT/backend"
-# .env holds shared settings (API keys, database). .env.production overrides
-# the ones that must differ from local dev: public URL, CORS, cookies, email.
-# dev.sh never reads it, so localhost keeps working. Python's load_dotenv
-# does not override variables already exported here, so these values win.
+# .env holds shared settings (API keys). The environment's overlay
+# (.env.production for live, .env.staging for staging) overrides the ones that
+# must differ from local dev: database, public URL, CORS, cookies, email.
+# dev.sh never reads an overlay, so localhost keeps working. Python's
+# load_dotenv does not override variables already exported here, so these
+# values win.
+ENV_FILE="${ENV_FILE:-.env.production}"
 set -a
 [ -f .env ] && . ./.env
-[ -f .env.production ] && . ./.env.production
+[ -f "$ENV_FILE" ] && . "./$ENV_FILE"
 set +a
 
 # --- refuse to serve the internet insecurely -----------------------------
@@ -46,7 +49,9 @@ if [ "${ALLOW_INSECURE:-}" != "true" ]; then
   esac
 
   # Password reset emails would print to this terminal and reach nobody.
-  [ "${EMAIL_PROVIDER:-console}" = "console" ] && fail \
+  # Staging is the exception, on purpose: its data is a copy of live, so it
+  # must never email real users. Its reset links go to the staging log.
+  [ "${EMAIL_PROVIDER:-console}" = "console" ] && [ "${INSITE_ENV:-}" != "staging" ] && fail \
     "EMAIL_PROVIDER=console: reset emails would never be delivered.
    Set EMAIL_PROVIDER=smtp and SMTP_* (see backend/.env.example), then
    check with: backend/.venv/bin/python -m app.scripts.send_test_email you@example.com"
