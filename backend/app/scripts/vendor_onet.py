@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-BASE = "https://www.onetcenter.org/dl_files/database/db_29_1_text/"
+BASE = "https://www.onetcenter.org/dl_files/database/db_30_0_text/"
 OUT = Path(__file__).resolve().parent.parent / "data"
 UA = {"User-Agent": "Insite/0.1 (career pathway tool)"}
 
