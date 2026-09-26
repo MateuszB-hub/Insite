@@ -62,7 +62,7 @@ _ALIASES: dict[str, str] = {
 
 _RELATED_DATA = _DATA.parent / "related.json"
 _TITLES_DATA = _DATA.parent / "titles.json"
-_EMPLOYMENT_DATA = _DATA.parent / "employment.json"
+_OEWS_DATA = _DATA.parent / "oews.json"
 
 #: Military occupations match many generic words ("technician", "analyst");
 #: they are offered only when the title says it is military.
@@ -133,12 +133,22 @@ def _titles() -> dict[str, dict[str, list[str]]]:
 
 
 @lru_cache(maxsize=1)
-def _employment() -> dict[str, int]:
+def oews() -> dict:
+    """Stored BLS OEWS figures: {"year", "by_soc": {soc: {median, mean, employment}}}.
+
+    Written by app/scripts/vendor_bls.py; OEWS changes once a year.
+    """
     try:
-        with _EMPLOYMENT_DATA.open() as f:
-            return json.load(f).get("by_soc", {})
+        with _OEWS_DATA.open() as f:
+            return json.load(f)
     except FileNotFoundError:
-        return {}
+        return {"year": "", "by_soc": {}}
+
+
+@lru_cache(maxsize=1)
+def _employment() -> dict[str, int]:
+    return {soc: v["employment"] for soc, v in oews().get("by_soc", {}).items()
+            if v.get("employment")}
 
 
 def employment(code: str) -> int | None:
