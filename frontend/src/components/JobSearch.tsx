@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Search, Loader2, MapPin, Building2, ExternalLink,
-  TriangleAlert, BadgeCheck, CircleHelp, Info, Copy, History, CheckCircle2, Plus, X,
+  TriangleAlert, BadgeCheck, CircleHelp, Info, Copy, History, CheckCircle2, Plus, X, Clock,
 } from 'lucide-react'
 import {
   MAX_JOB_LOCATIONS,
@@ -49,6 +49,27 @@ function SalaryLine({ job }: { job: JobPosting }) {
   )
 }
 
+/** How old the advert says it is. Past a week it is often already filled. */
+function PostedAgo({ created }: { created?: string | null }) {
+  if (!created) return null
+  const days = Math.floor((Date.now() - new Date(created).getTime()) / 86_400_000)
+  if (Number.isNaN(days) || days < 0) return null
+  const label = days === 0 ? 'Posted today' : days === 1 ? 'Posted yesterday' : `Posted ${days} days ago`
+  return (
+    <span className={`inline-flex items-center gap-1 ${days > 7 ? 'text-amber-700' : ''}`}
+      title={days > 7 ? 'Older adverts are often already filled.' : undefined}>
+      <Clock className="w-3.5 h-3.5" /> {label}
+    </span>
+  )
+}
+
+const AGE_CHOICES = [
+  { value: '7', label: 'Past 7 days' },
+  { value: '14', label: 'Past 14 days' },
+  { value: '30', label: 'Past 30 days' },
+  { value: '', label: 'Any time' },
+]
+
 export default function JobSearch() {
   const [q, setQ] = useState('')
   //: Places are tags, not free text: a comma is part of "Austin, TX", so it
@@ -56,6 +77,8 @@ export default function JobSearch() {
   const [places, setPlaces] = useState<string[]>([])
   const [placeDraft, setPlaceDraft] = useState('')
   const [salaryMin, setSalaryMin] = useState('')
+  //: Default a week: testers found older adverts are usually already filled.
+  const [maxDaysOld, setMaxDaysOld] = useState('7')
   const [requireStated, setRequireStated] = useState(false)
   const [remoteOnly, setRemoteOnly] = useState(false)
   const [includeConflicted, setIncludeConflicted] = useState(false)
@@ -119,6 +142,7 @@ export default function JobSearch() {
         q: q.trim(),
         where,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
+        maxDaysOld: maxDaysOld ? Number(maxDaysOld) : undefined,
         requireStatedSalary: requireStated,
         remoteOnly,
         includeConflictedRemote: includeConflicted,
@@ -129,6 +153,100 @@ export default function JobSearch() {
       setLoading(false)
     }
   }
+
+  const renderJob = (job: JobPosting, section: 'stated' | 'estimated' = 'stated') => (
+      <article key={job.id} data-section={section}
+        className={`border rounded-xl p-5 transition-colors ${
+          tracked.has(job.fingerprint)
+            ? 'bg-slate-50 border-slate-200 opacity-75'
+            : 'bg-white border-slate-200 hover:border-indigo-200'
+        }`}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="font-semibold text-slate-900">{job.title}</h2>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500">
+              {job.company && (
+                <span className="inline-flex items-center gap-1">
+                  <Building2 className="w-3.5 h-3.5" /> {job.company}
+                </span>
+              )}
+              {job.location && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5" /> {job.location}
+                </span>
+              )}
+              {job.contract_time && <span>{job.contract_time.replace('_', ' ')}</span>}
+      <PostedAgo created={job.created} />
+            </div>
+          </div>
+          {job.remote_claim === 'remote' && (
+            <span className="shrink-0 text-xs px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+              Remote
+            </span>
+          )}
+          {job.remote_claim === 'conflicted' && (
+            <span className="shrink-0 text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+              Remote? unclear
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3"><SalaryLine job={job} /></div>
+
+        {job.duplicate_count > 1 && (
+          <p className="mt-2 text-xs text-slate-500 flex items-start gap-1.5">
+            <Copy className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            The same advert appears {job.duplicate_count} times
+            {job.duplicate_locations.length > 0 && (
+              <> — also in {job.duplicate_locations.slice(0, 3).join(', ')}
+              {job.duplicate_locations.length > 3 &&
+                ` and ${job.duplicate_locations.length - 3} more`}</>
+            )}
+          </p>
+        )}
+
+        {job.is_repost && (
+          <p className="mt-2 text-xs text-amber-700 flex items-start gap-1.5">
+            <History className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            We first saw this advert on{' '}
+            {new Date(job.first_seen!).toLocaleDateString()} — it has been
+            reposted since, which resets the date the board shows.
+          </p>
+        )}
+
+        {job.remote_note && (
+          <p className="mt-2 text-xs text-amber-700 flex items-start gap-1.5">
+            <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            {job.remote_note}
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <a href={job.url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline">
+            View posting <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+
+          {tracked.has(job.fingerprint) ? (
+            <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
+              <CheckCircle2 className="w-4 h-4" /> Already applied
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={tracking === job.id}
+              onClick={() => markApplied(job)}
+              className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              {tracking === job.id
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Plus className="w-3.5 h-3.5" />}
+              Mark as applied
+            </button>
+          )}
+        </div>
+      </article>
+  )
 
   const excluded = data
     ? data.excluded_estimated_salary + data.excluded_no_salary +
@@ -210,6 +328,13 @@ export default function JobSearch() {
 
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
           <label className="flex items-center gap-2 text-sm text-slate-700">
+            Posted
+            <select id="age" value={maxDaysOld} onChange={(e) => setMaxDaysOld(e.target.value)}
+              className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none">
+              {AGE_CHOICES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={requireStated}
               onChange={(e) => setRequireStated(e.target.checked)}
               className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
@@ -270,7 +395,7 @@ export default function JobSearch() {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
               <p className="text-sm text-slate-700 flex items-center gap-1.5">
                 <Info className="w-4 h-4 text-slate-400" />
-                Showing {data.postings.length} of{' '}
+                Showing {data.postings.length + data.estimated_matches.length} of{' '}
                 {data.total_available?.toLocaleString() ?? 'many'} — {excluded} hidden by your filters
               </p>
               <ul className="mt-1.5 text-xs text-slate-500 space-y-0.5">
@@ -281,7 +406,7 @@ export default function JobSearch() {
                   <li>{data.excluded_no_salary} stated no salary at all</li>
                 )}
                 {data.excluded_below_salary > 0 && (
-                  <li>{data.excluded_below_salary} were genuinely below your minimum</li>
+                  <li>{data.excluded_below_salary} were below your minimum</li>
                 )}
                 {data.excluded_not_remote > 0 && (
                   <li>{data.excluded_not_remote} said remote but were tied to a location</li>
@@ -290,105 +415,39 @@ export default function JobSearch() {
             </div>
           )}
 
-          {data.postings.length === 0 ? (
+          {data.postings.length === 0 && data.estimated_matches.length === 0 ? (
             <p className="text-center text-slate-500 py-16">
-              Nothing matched honestly. Try relaxing a filter.
+              Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Posted"' : ''}.
             </p>
           ) : (
-            <div className="grid gap-3">
-              {data.postings.map((job) => (
-                <article key={job.id}
-                  className={`border rounded-xl p-5 transition-colors ${
-                    tracked.has(job.fingerprint)
-                      ? 'bg-slate-50 border-slate-200 opacity-75'
-                      : 'bg-white border-slate-200 hover:border-indigo-200'
-                  }`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h2 className="font-semibold text-slate-900">{job.title}</h2>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500">
-                        {job.company && (
-                          <span className="inline-flex items-center gap-1">
-                            <Building2 className="w-3.5 h-3.5" /> {job.company}
-                          </span>
-                        )}
-                        {job.location && (
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" /> {job.location}
-                          </span>
-                        )}
-                        {job.contract_time && <span>{job.contract_time.replace('_', ' ')}</span>}
-                      </div>
-                    </div>
-                    {job.remote_claim === 'remote' && (
-                      <span className="shrink-0 text-xs px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                        Remote
-                      </span>
-                    )}
-                    {job.remote_claim === 'conflicted' && (
-                      <span className="shrink-0 text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
-                        Remote? unclear
-                      </span>
-                    )}
+            <>
+              {data.postings.length > 0 ? (
+                <div className="grid gap-3">
+                  {data.postings.map((job) => renderJob(job))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 bg-white border border-slate-200 rounded-xl p-4">
+                  No employer in these results published pay at or above your minimum.
+                </p>
+              )}
+
+              {/* Estimates that clear the floor: shown, never passed off as stated. */}
+              {data.estimated_matches.length > 0 && (
+                <section className="mt-8" aria-labelledby="estimated-heading">
+                  <h2 id="estimated-heading" className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <TriangleAlert className="w-4 h-4 text-amber-600" />
+                    Pay estimated by the job board, at or above your minimum
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1 mb-3">
+                    These employers didn't publish a salary; the figure is the job board's
+                    guess. Worth a look, but confirm the pay before you apply.
+                  </p>
+                  <div className="grid gap-3">
+                    {data.estimated_matches.map((job) => renderJob(job, 'estimated'))}
                   </div>
-
-                  <div className="mt-3"><SalaryLine job={job} /></div>
-
-                  {job.duplicate_count > 1 && (
-                    <p className="mt-2 text-xs text-slate-500 flex items-start gap-1.5">
-                      <Copy className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      The same advert appears {job.duplicate_count} times
-                      {job.duplicate_locations.length > 0 && (
-                        <> — also in {job.duplicate_locations.slice(0, 3).join(', ')}
-                        {job.duplicate_locations.length > 3 &&
-                          ` and ${job.duplicate_locations.length - 3} more`}</>
-                      )}
-                    </p>
-                  )}
-
-                  {job.is_repost && (
-                    <p className="mt-2 text-xs text-amber-700 flex items-start gap-1.5">
-                      <History className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      We first saw this advert on{' '}
-                      {new Date(job.first_seen!).toLocaleDateString()} — it has been
-                      reposted since, which resets the date the board shows.
-                    </p>
-                  )}
-
-                  {job.remote_note && (
-                    <p className="mt-2 text-xs text-amber-700 flex items-start gap-1.5">
-                      <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      {job.remote_note}
-                    </p>
-                  )}
-
-                  <div className="mt-3 flex flex-wrap items-center gap-4">
-                    <a href={job.url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline">
-                      View posting <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-
-                    {tracked.has(job.fingerprint) ? (
-                      <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
-                        <CheckCircle2 className="w-4 h-4" /> Already applied
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={tracking === job.id}
-                        onClick={() => markApplied(job)}
-                        className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
-                      >
-                        {tracking === job.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <Plus className="w-3.5 h-3.5" />}
-                        Mark as applied
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
+                </section>
+              )}
+            </>
           )}
         </>
       )}

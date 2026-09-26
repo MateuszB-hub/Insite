@@ -19,6 +19,15 @@ const check = (n, p, d = '') => { checks.push({ n, p }); console.log(`  ${p ? 'P
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } })
 const errs = []
+// Wait for THIS search's response: the previous results stay on screen
+// while the next search runs, so waiting for 'article' alone passes early.
+const searchAndWait = async () => {
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/api/jobs/search'), { timeout: 90000 }),
+    page.getByRole('button', { name: 'Search' }).click(),
+  ])
+  await page.waitForSelector('article', { timeout: 60000 })
+}
 page.on('pageerror', e => errs.push(e.message))
 
 console.log('\nInsite — candidate portal demo\n')
@@ -60,6 +69,20 @@ check('profile saves', true)
 // find a real job and track it
 await page.goto(`${BASE}/jobs`, { waitUntil: 'networkidle' })
 await page.waitForSelector('#q', { state: 'visible', timeout: 15000 })
+// tester's case: "software engineer", nationwide, $100k minimum used to
+// show 2 jobs. Estimated pay above the floor now has its own labelled list.
+await page.fill('#q', 'software engineer')
+await page.fill('#sal', '100000')
+await searchAndWait()
+const stated = await page.locator('article[data-section="stated"]').count()
+const estimated = await page.locator('article[data-section="estimated"]').count()
+check('salary floor returns more than a couple of jobs', stated + estimated >= 5, `${stated} employer-stated + ${estimated} estimated`)
+const firstCard = await page.locator('article').first().innerText()
+check('cards show how recently they were posted', /Posted (today|yesterday|\d+ days ago)/.test(firstCard))
+check('recent-only is the default', (await page.inputValue('#age')) === '7')
+await page.screenshot({ path: `${OUT}/0-salary-floor.png`, fullPage: false })
+await page.fill('#sal', '')
+
 await page.fill('#q', 'registered nurse')
 // several places: each becomes a removable tag, all searched at once
 for (const place of ['Austin', 'Denver']) {
@@ -68,8 +91,7 @@ for (const place of ['Austin', 'Denver']) {
 }
 const tags = await page.getByLabel('Selected locations').innerText()
 check('places become tags', tags.includes('Austin') && tags.includes('Denver'), tags.replace(/\s+/g, ' '))
-await page.getByRole('button', { name: 'Search' }).click()
-await page.waitForSelector('article', { timeout: 60000 })
+await searchAndWait()
 const cities = (await page.locator('article').allInnerTexts()).join(' ')
 check('results cover every place', /Austin|Travis/.test(cities) && /Denver/.test(cities))
 await page.screenshot({ path: `${OUT}/0-two-cities.png`, fullPage: false })

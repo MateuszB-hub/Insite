@@ -50,6 +50,11 @@ class JobSearchResponse(BaseModel):
     #: Adverts folded into another row because the text was identical.
     collapsed_duplicates: int = 0
     locations_searched: list[str] = []
+    #: With a salary floor: jobs whose pay was ESTIMATED by the job board at or
+    #: above it. Kept apart from `postings` so they are never mistaken for
+    #: employer-stated matches.
+    estimated_matches: list[JobOut] = []
+    pages_fetched: int = 0
     #: Places whose lookup failed; results for the others are still shown.
     failed_locations: list[str] = []
 
@@ -64,6 +69,9 @@ async def job_search(
     require_stated_salary: bool = Query(False),
     remote_only: bool = Query(False),
     include_conflicted_remote: bool = Query(False),
+    # Adverts older than about a week are usually already filled (tester
+    # feedback); the UI defaults to 7. Omit for any age.
+    max_days_old: int | None = Query(None, ge=1, le=365),
     limit: int = Query(30, ge=1, le=50),
 ):
     """Search postings, keeping every provenance signal intact.
@@ -85,6 +93,7 @@ async def job_search(
             require_stated_salary=require_stated_salary,
             remote_only=remote_only,
             include_conflicted_remote=include_conflicted_remote,
+            max_days_old=max_days_old,
             limit=limit,
         )
     except RuntimeError as exc:
@@ -95,6 +104,8 @@ async def job_search(
 
     return JobSearchResponse(
         postings=[JobOut(**p.to_dict()) for p in result.postings],
+        estimated_matches=[JobOut(**p.to_dict()) for p in result.estimated_matches],
+        pages_fetched=result.pages_fetched,
         total_available=result.total_available,
         excluded_estimated_salary=result.excluded_estimated_salary,
         excluded_no_salary=result.excluded_no_salary,

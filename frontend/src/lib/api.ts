@@ -452,6 +452,9 @@ export interface JobSearchResponse {
   collapsed_duplicates: number
   locations_searched: string[]
   failed_locations: string[]
+  /** With a salary floor: board-ESTIMATED pay at or above it, kept apart. */
+  estimated_matches: JobPosting[]
+  pages_fetched: number
 }
 
 /** Adzuna takes one place per query; the backend runs up to this many. */
@@ -464,6 +467,7 @@ export async function searchJobs(params: {
   requireStatedSalary?: boolean
   remoteOnly?: boolean
   includeConflictedRemote?: boolean
+  maxDaysOld?: number
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
   const qs = new URLSearchParams({ q: params.q })
@@ -472,6 +476,7 @@ export async function searchJobs(params: {
   if (params.requireStatedSalary) qs.set('require_stated_salary', 'true')
   if (params.remoteOnly) qs.set('remote_only', 'true')
   if (params.includeConflictedRemote) qs.set('include_conflicted_remote', 'true')
+  if (params.maxDaysOld) qs.set('max_days_old', String(params.maxDaysOld))
 
   const res = await apiFetch(`/api/jobs/search?${qs}`, { ...withCreds, signal: params.signal })
   if (!res.ok) throw new Error(await readError(res))

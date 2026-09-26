@@ -183,17 +183,27 @@ def test_locations_are_trimmed_deduplicated_and_capped():
         "Austin", "Denver", "Reno"]
 
 
-def _fake_adzuna(monkeypatch, pages, fail=()):
-    """Serve `pages[where]` as the Adzuna response for each place."""
+def _fake_adzuna(monkeypatch, pages, fail=(), count=None, requests=None):
+    """Serve `pages[where]` for each place, paged like Adzuna (/search/<n>).
+
+    `count` overrides the reported total (default: 10x what is served).
+    `requests` collects each request's query params and page number.
+    """
     seen = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         where = request.url.params.get("where")
+        page = int(request.url.path.rsplit("/", 1)[-1])
+        per_page = int(request.url.params.get("results_per_page", 50))
         seen.append(where)
+        if requests is not None:
+            requests.append({**dict(request.url.params), "page": page})
         if where in fail:
             return httpx.Response(500)
-        results = pages[where]
-        return httpx.Response(200, json={"count": len(results) * 10, "results": results})
+        everything = pages[where]
+        chunk = everything[(page - 1) * per_page: page * per_page]
+        total = count if count is not None else len(everything) * 10
+        return httpx.Response(200, json={"count": total, "results": chunk})
 
     real = httpx.AsyncClient
     monkeypatch.setattr(job_search.httpx, "AsyncClient",
@@ -251,3 +261,84 @@ def test_no_location_searches_nationwide(monkeypatch):
     result = asyncio.run(search_jobs("engineer", None))
     assert seen == [None]
     assert len(result.postings) == 1
+
+
+# --- salary floor: stated first, estimates apart, never hidden -------------
+
+def _paid(word, low, high, predicted):
+    return posting(id=word, title=f"Engineer {word}", description=f"Advert {word}.",
+                   salary_min=low, salary_max=high, salary_is_predicted=predicted,
+                   location={"display_name": "US"})
+
+
+def test_floor_separates_stated_from_estimated(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: [
+        _paid("alpha", 110000, 130000, "0"),    # stated, clears
+        _paid("bravo", 90000, 120000, "0"),     # stated range reaches the floor
+        _paid("charlie", 60000, 80000, "0"),    # stated, below
+        _paid("delta", 105000, 105000, "1"),    # estimated, clears
+        _paid("echo", 50000, 50000, "1"),       # estimated, below
+        posting(id="fox", title="Engineer foxtrot", description="Advert foxtrot."),  # no pay
+    ]}, count=6)
+    result = asyncio.run(search_jobs("engineer", salary_min=100000))
+    assert [p.id for p in result.postings] == ["alpha", "bravo"]
+    assert [p.id for p in result.estimated_matches] == ["delta"]
+    assert result.excluded_below_salary == 2
+    assert result.excluded_no_salary == 1
+
+
+def test_stated_only_drops_estimates_entirely(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: [
+        _paid("alpha", 110000, 130000, "0"), _paid("delta", 105000, 105000, "1"),
+    ]}, count=2)
+    result = asyncio.run(search_jobs("engineer", salary_min=100000, require_stated_salary=True))
+    assert [p.id for p in result.postings] == ["alpha"]
+    assert result.estimated_matches == []
+    assert result.excluded_estimated_salary == 1
+
+
+def test_floor_and_age_are_sent_to_adzuna(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: []}, count=0, requests=requests)
+    asyncio.run(search_jobs("engineer", salary_min=100000, max_days_old=7))
+    assert requests[0]["salary_min"] == "100000"
+    assert requests[0]["max_days_old"] == "7"
+
+
+def test_no_age_limit_unless_asked(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: []}, count=0, requests=requests)
+    asyncio.run(search_jobs("engineer"))
+    assert "max_days_old" not in requests[0]
+
+
+_MANY = [f"word{c}{d}" for c in "abcdefghij" for d in "abcdefghij"]
+
+
+def _estimated_page(n, start=0):
+    return [_paid(_MANY[start + i], 120000, 120000, "1") for i in range(n)]
+
+
+def test_too_few_stated_fetches_more_pages(monkeypatch):
+    requests = []
+    # 20 per page for limit=10; stated matches only appear on page 3.
+    served = _estimated_page(40) + [_paid("zulu", 150000, 150000, "0")] + _estimated_page(19, 40)
+    _fake_adzuna(monkeypatch, {None: served}, count=500, requests=requests)
+    result = asyncio.run(search_jobs("engineer", salary_min=100000, limit=10))
+    assert [r["page"] for r in requests] == [1, 2, 3]
+    assert result.pages_fetched == 3
+    assert [p.id for p in result.postings] == ["zulu"]
+
+
+def test_no_extra_pages_without_filters(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: _estimated_page(60)}, count=500, requests=requests)
+    asyncio.run(search_jobs("engineer", limit=10))
+    assert [r["page"] for r in requests] == [1]
+
+
+def test_no_extra_pages_when_the_source_is_exhausted(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: _estimated_page(5)}, count=5, requests=requests)
+    asyncio.run(search_jobs("engineer", salary_min=100000, limit=10))
+    assert [r["page"] for r in requests] == [1]
