@@ -6,6 +6,7 @@
  *   4. sign out returns to /login and re-protects the route
  *   5. sign back in works
  *   6. session cookie is not readable from JavaScript (httpOnly)
+ *   7. sign-up blocks a mismatched confirmation; the eye toggle reveals the password
  */
 import { chromium } from 'playwright'
 import { mkdirSync, rmSync } from 'node:fs'
@@ -40,6 +41,19 @@ await page.fill('#name', 'Mateusz')
 await page.fill('#email', EMAIL)
 await page.fill('#password', PW)
 await page.getByRole('checkbox').check()
+
+// 7. confirmation must match; nothing is submitted until it does
+await page.fill('#password-confirm', PW + ' typo')
+await page.getByRole('button', { name: 'Create Account' }).click()
+await page.waitForTimeout(300)
+const mismatchText = await page.locator('form').innerText()
+check('mismatched confirmation is blocked', page.url().includes('/login') && mismatchText.includes('Passwords do not match'))
+await page.getByRole('button', { name: 'Show password' }).first().click()
+check('eye toggle reveals the password', (await page.getAttribute('#password', 'type')) === 'text')
+await page.getByRole('button', { name: 'Hide password' }).first().click()
+check('eye toggle hides it again', (await page.getAttribute('#password', 'type')) === 'password')
+await page.fill('#password-confirm', PW)
+
 await page.screenshot({ path: `${OUT}/2-register.png`, fullPage: true })
 await page.getByRole('button', { name: 'Create Account' }).click()
 await page.waitForURL('**/dashboard', { timeout: 20000 })

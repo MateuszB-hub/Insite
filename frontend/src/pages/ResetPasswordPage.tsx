@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, KeyRound, Loader2 } from 'lucide-react'
 import { resetPassword } from '../lib/api'
+import PasswordInput from '../components/PasswordInput'
 
 const MIN = 12
 
@@ -81,9 +82,9 @@ export default function ResetPasswordPage() {
                   <label htmlFor="new" className="block text-sm font-medium text-slate-700 mb-1">
                     New password
                   </label>
-                  <input
-                    id="new" type="password" required autoComplete="new-password"
-                    value={next} onChange={(e) => setNext(e.target.value)}
+                  <PasswordInput
+                    id="new" autoComplete="new-password"
+                    value={next} onChange={setNext}
                     placeholder={`At least ${MIN} characters`} className={field}
                   />
                 </div>
@@ -91,9 +92,9 @@ export default function ResetPasswordPage() {
                   <label htmlFor="conf" className="block text-sm font-medium text-slate-700 mb-1">
                     Confirm password
                   </label>
-                  <input
-                    id="conf" type="password" required autoComplete="new-password"
-                    value={confirm} onChange={(e) => setConfirm(e.target.value)}
+                  <PasswordInput
+                    id="conf" autoComplete="new-password"
+                    value={confirm} onChange={setConfirm}
                     className={field}
                   />
                 </div>

@@ -16,7 +16,7 @@ const p = await b.newPage({ viewport: { width: 1400, height: 1000 } })
 // register, then forget the password
 await p.goto(`${BASE}/login`, { waitUntil: 'networkidle' })
 await p.getByRole('button', { name: 'Register' }).click()
-await p.fill('#name', 'Reset Test'); await p.fill('#email', EMAIL); await p.fill('#password', PW1)
+await p.fill('#name', 'Reset Test'); await p.fill('#email', EMAIL); await p.fill('#password', PW1); await p.fill('#password-confirm', PW1)
 await p.getByRole('checkbox').check()
 await p.getByRole('button', { name: 'Create Account' }).click()
 await p.waitForURL('**/jobs', { timeout: 20000 })
