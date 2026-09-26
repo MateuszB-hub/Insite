@@ -12,7 +12,8 @@
     "demo:auth": "node e2e/auth-demo.mjs",
     "demo:portal": "node e2e/portal-demo.mjs",
     "demo:reset": "node e2e/reset-demo.mjs",
-    "demo:home": "node e2e/home-demo.mjs"
+    "demo:home": "node e2e/home-demo.mjs",
+    "demo:mentor": "node e2e/mentor-demo.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.510.0",

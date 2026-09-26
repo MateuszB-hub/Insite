@@ -84,7 +84,7 @@ await page.getByRole('button', { name: 'Map pathway' }).click()
 
 // Tester: the old ~22 s wait was "too slow, most people would just leave".
 // The facts come without waiting on a model at all.
-await page.waitForSelector('text=Roles open to you', { timeout: 60000 })
+await page.waitForSelector('text=Roles you could move into', { timeout: 60000 })
 const factsIn = (Date.now() - started) / 1000
 const earlyBadges = await page.locator('span', { hasText: /^(Ready now|Stretch|Longer term)$/ }).count()
 await page.waitForTimeout(500)

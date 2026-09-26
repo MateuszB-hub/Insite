@@ -506,6 +506,9 @@ export interface JobPosting {
   first_seen?: string | null
   /** Seen circulating materially earlier than the advert claims. */
   is_repost: boolean
+  contract_type?: string | null
+  /** What the advert states: full_time / part_time / contract / permanent. */
+  job_types?: JobType[]
 }
 
 export interface JobSearchResponse {
@@ -521,10 +524,24 @@ export interface JobSearchResponse {
   /** With a salary floor: board-ESTIMATED pay at or above it, kept apart. */
   estimated_matches: JobPosting[]
   pages_fetched: number
+  /** Job-type filter: adverts that didn't say their type / said another. */
+  excluded_type_unstated?: number
+  excluded_other_type?: number
+  /** "phrase": the words were kept together; "words": matched one by one. */
+  match?: 'phrase' | 'words'
 }
 
 /** Adzuna takes one place per query; the backend runs up to this many. */
 export const MAX_JOB_LOCATIONS = 3
+
+export type JobType = 'full_time' | 'part_time' | 'contract' | 'permanent'
+
+export const JOB_TYPE_LABELS: Record<JobType, string> = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  contract: 'Contract',
+  permanent: 'Permanent',
+}
 
 export async function searchJobs(params: {
   q: string
@@ -534,6 +551,7 @@ export async function searchJobs(params: {
   remoteOnly?: boolean
   includeConflictedRemote?: boolean
   maxDaysOld?: number
+  jobType?: JobType
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
   const qs = new URLSearchParams({ q: params.q })
@@ -543,6 +561,7 @@ export async function searchJobs(params: {
   if (params.remoteOnly) qs.set('remote_only', 'true')
   if (params.includeConflictedRemote) qs.set('include_conflicted_remote', 'true')
   if (params.maxDaysOld) qs.set('max_days_old', String(params.maxDaysOld))
+  if (params.jobType) qs.set('job_type', params.jobType)
 
   const res = await apiFetch(`/api/jobs/search?${qs}`, { ...withCreds, signal: params.signal })
   if (!res.ok) throw new Error(await readError(res))

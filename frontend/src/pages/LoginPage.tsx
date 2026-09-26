@@ -184,11 +184,19 @@ export default function LoginPage() {
                   className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span>
-                  I accept the terms and understand my data is retained for 24 months.
-                  Analysis runs on a local model by default — nothing is sent to a
-                  third-party AI service unless I opt in.
+                  I accept the terms and understand my data is kept for 24 months.
                 </span>
               </label>
+            )}
+
+            {/* Information, not a choice: kept out of the checkbox so ticking it
+                never reads as opting in to anything (mentor feedback). */}
+            {isRegister && (
+              <p className="text-xs text-slate-500 -mt-2 pl-6">
+                AI analysis runs on a model on Insite's own computer, so what you enter is
+                not sent to an outside AI company. Job searches go to the Adzuna job board
+                without your name or email.
+              </p>
             )}
 
             {!isRegister && (

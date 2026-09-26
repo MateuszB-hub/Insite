@@ -19,11 +19,21 @@ import {
   type DataSourceInfo,
   type OccupationInfo,
 } from '../lib/api'
+import { useAuth } from '../auth/AuthContext'
 import { markPathwayExplored } from '../lib/progress'
+import { loadRecent, saveRecent } from '../lib/recent'
 import MoveFacts from './MoveFacts'
 import ReadinessBadge from './ReadinessBadge'
 import SourceAttribution from './SourceAttribution'
 import TransferableRoles from './TransferableRoles'
+
+interface RecentPathway {
+  role: string
+  industry: string
+  horizon: number
+}
+
+const recentKey = (r: RecentPathway) => `${r.role.toLowerCase()}|${r.industry.toLowerCase()}|${r.horizon}`
 
 const HORIZONS = [
   { months: 6, label: '6 months' },
@@ -47,6 +57,8 @@ export default function CareerPathway() {
   const [role, setRole] = useState(() => params.get('role') ?? '')
   const [industry, setIndustry] = useState(() => params.get('industry') ?? '')
   const [horizon, setHorizon] = useState(12)
+  const { user } = useAuth()
+  const [recent, setRecent] = useState<RecentPathway[]>(() => loadRecent<RecentPathway>('pathway', user?.id))
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CareerPathwayResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -58,14 +70,20 @@ export default function CareerPathway() {
   const requestId = useRef(0)
   const lastParams = useRef<{ currentRole: string; industry: string; horizonMonths: number } | null>(null)
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!role.trim() || loading) return
+  const submit = async (e?: FormEvent, from?: RecentPathway) => {
+    e?.preventDefault()
+    const wanted = from ?? { role: role.trim(), industry: industry.trim(), horizon }
+    if (!wanted.role || loading) return
+    if (from) {
+      setRole(from.role)
+      setIndustry(from.industry)
+      setHorizon(from.horizon)
+    }
     const id = ++requestId.current
     const params = {
-      currentRole: role.trim(),
-      industry: industry.trim(),
-      horizonMonths: horizon,
+      currentRole: wanted.role,
+      industry: wanted.industry,
+      horizonMonths: wanted.horizon,
     }
     lastParams.current = params
     setLoading(true)
@@ -78,6 +96,7 @@ export default function CareerPathway() {
       if (id !== requestId.current) return
       setResult(facts)
       markPathwayExplored()
+      setRecent(saveRecent('pathway', user?.id, wanted, recentKey))
     } catch (err) {
       if (id === requestId.current) {
         setError(err instanceof Error ? err.message : 'Unexpected error')
@@ -149,7 +168,11 @@ export default function CareerPathway() {
 
         <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <span className="block text-sm font-medium text-slate-700 mb-2">Looking ahead</span>
+            <span className="block text-sm font-medium text-slate-700">How soon do you want to move?</span>
+            <span className="block text-xs text-slate-500 mb-2">
+              Shows roles you could realistically reach in that time, from the training
+              and experience they usually need.
+            </span>
             <div className="flex flex-wrap gap-2">
               {HORIZONS.map((h) => (
                 <button
@@ -177,6 +200,18 @@ export default function CareerPathway() {
           </button>
         </div>
       </form>
+
+      {!result && !loading && recent.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6 text-sm" aria-label="Recent pathways">
+          <span className="text-slate-500">Recent:</span>
+          {recent.map((r) => (
+            <button key={recentKey(r)} type="button" onClick={() => submit(undefined, r)}
+              className="px-3 py-1 rounded-full border border-slate-300 bg-white text-slate-700 hover:border-indigo-400">
+              {r.role}{r.industry ? ` · ${r.industry}` : ''} · {HORIZONS.find((h) => h.months === r.horizon)?.label ?? `${r.horizon} months`}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700 mb-6">
@@ -210,7 +245,7 @@ export default function CareerPathway() {
           {/* Destinations */}
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">
-              Roles open to you after {HORIZONS.find((h) => h.months === result.horizon_months)?.label ?? `${result.horizon_months} months`}
+              Roles you could move into within {HORIZONS.find((h) => h.months === result.horizon_months)?.label ?? `${result.horizon_months} months`}
             </h2>
             {result.pathways.length === 0 ? (
               <p className="text-slate-500 text-sm bg-white border border-slate-200 rounded-xl p-6">

@@ -183,6 +183,14 @@ def test_locations_are_trimmed_deduplicated_and_capped():
         "Austin", "Denver", "Reno"]
 
 
+@pytest.fixture(autouse=True)
+def _fresh_search_cache():
+    # Tests reuse queries against different fake responses.
+    job_search.clear_search_cache()
+    yield
+    job_search.clear_search_cache()
+
+
 def _fake_adzuna(monkeypatch, pages, fail=(), count=None, requests=None):
     """Serve `pages[where]` for each place, paged like Adzuna (/search/<n>).
 
@@ -342,3 +350,84 @@ def test_no_extra_pages_when_the_source_is_exhausted(monkeypatch):
     _fake_adzuna(monkeypatch, {None: _estimated_page(5)}, count=5, requests=requests)
     asyncio.run(search_jobs("engineer", salary_min=100000, limit=10))
     assert [r["page"] for r in requests] == [1]
+
+
+# --- phrase search: "QA lead" means QA leads, not every "lead" -------------
+
+def test_multi_word_query_is_searched_as_a_phrase(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=100, requests=requests)
+    result = asyncio.run(search_jobs("QA lead"))
+    assert requests[0]["what_phrase"] == "QA lead"
+    assert "what" not in requests[0]
+    assert result.match == "phrase"
+
+
+def test_one_word_query_is_searched_as_a_word(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=100, requests=requests)
+    result = asyncio.run(search_jobs("engineer"))
+    assert requests[0]["what"] == "engineer"
+    assert result.match == "words"
+
+
+def test_too_few_phrase_hits_fall_back_to_words(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=2, requests=requests)
+    result = asyncio.run(search_jobs("backend dev lead"))
+    assert [("what_phrase" in r, "what" in r) for r in requests] == [(True, False), (False, True)]
+    assert result.match == "words"
+
+
+# --- job type: filtered on what adverts state, the rest counted ------------
+
+def _typed(word, **kw):
+    return posting(id=word, title=kw.pop("title", f"Engineer {word}"),
+                   description=f"Advert {word}.", location={"display_name": "US"}, **kw)
+
+
+def test_job_types_from_both_fields_and_the_title():
+    assert job_search.job_types(to_posting(_typed("a", contract_time="full_time"))) == {"full_time"}
+    assert job_search.job_types(to_posting(_typed("b", contract_type="contract"))) == {"contract"}
+    assert job_search.job_types(to_posting(_typed("c", title="QA Lead (W2 Contract)"))) == {"contract"}
+    assert job_search.job_types(to_posting(_typed("d", title="QA Lead - C2C"))) == {"contract"}
+    both = to_posting(_typed("e", contract_time="full_time", contract_type="contract"))
+    assert job_search.job_types(both) == {"full_time", "contract"}
+    assert job_search.job_types(to_posting(_typed("f"))) == set()
+
+
+def test_job_type_filter_counts_what_it_removes(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: [
+        _typed("alpha", contract_time="full_time"),
+        _typed("bravo", title="QA Lead (Contract)"),
+        _typed("charlie", contract_time="part_time"),
+        _typed("delta"),                        # says nothing
+    ]}, count=4)
+    result = asyncio.run(search_jobs("engineer", job_type="contract"))
+    assert [p.id for p in result.postings] == ["bravo"]
+    assert result.excluded_other_type == 2
+    assert result.excluded_type_unstated == 1
+
+
+def test_unknown_job_type_is_refused(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: []}, count=0)
+    with pytest.raises(ValueError):
+        asyncio.run(search_jobs("engineer", job_type="gig"))
+
+
+def test_posting_reports_its_types():
+    got = to_posting(_typed("a", contract_time="full_time", contract_type="permanent")).to_dict()
+    assert got["job_types"] == ["full_time", "permanent"]
+
+
+# --- repeat searches are remembered for a while ----------------------------
+
+def test_identical_search_is_served_from_the_cache(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: [_job(0, "US")]}, count=10, requests=requests)
+    first = asyncio.run(search_jobs("engineer", max_days_old=7))
+    again = asyncio.run(search_jobs("  Engineer ", max_days_old=7))
+    other = asyncio.run(search_jobs("engineer", max_days_old=14))
+    assert again is first
+    assert other is not first
+    assert len(requests) == 2
