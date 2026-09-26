@@ -182,7 +182,7 @@ export default function JobSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const renderJob = (job: JobPosting, section: 'stated' | 'estimated' = 'stated') => (
+  const renderJob = (job: JobPosting, section: 'stated' | 'estimated' | 'loose' = 'stated') => (
       <article key={job.id} data-section={section}
         className={`border rounded-xl p-5 transition-colors ${
           tracked.has(job.fingerprint)
@@ -286,6 +286,7 @@ export default function JobSearch() {
       (data.excluded_type_unstated ?? 0) + (data.excluded_other_type ?? 0)
     : 0
   const multiWord = q.trim().split(/\s+/).length >= 2
+  const loose = data?.loose_matches ?? []
   const folded = data?.collapsed_duplicates ?? 0
 
   const field =
@@ -436,11 +437,9 @@ export default function JobSearch() {
             </div>
           )}
 
-          {multiWord && data.match && (
+          {data.match === 'title' && (
             <p className="text-sm text-slate-500 mb-3" data-testid="match-note">
-              {data.match === 'phrase'
-                ? <>Matching the exact phrase "{q.trim()}".</>
-                : <>Few adverts use the exact phrase "{q.trim()}", so these match its words anywhere in the advert.</>}
+              Jobs with {multiWord ? <>every word of "{q.trim()}"</> : <>"{q.trim()}"</>} in the job title.
             </p>
           )}
 
@@ -485,7 +484,7 @@ export default function JobSearch() {
             </div>
           )}
 
-          {data.postings.length === 0 && data.estimated_matches.length === 0 ? (
+          {data.postings.length === 0 && data.estimated_matches.length === 0 && !loose.length ? (
             <p className="text-center text-slate-500 py-16">
               Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Posted"' : ''}.
             </p>
@@ -514,6 +513,25 @@ export default function JobSearch() {
                   </p>
                   <div className="grid gap-3">
                     {data.estimated_matches.map((job) => renderJob(job, 'estimated'))}
+                  </div>
+                </section>
+              )}
+
+              {/* Only mention the words: kept apart, since this is where
+                  off-topic results come from ("QA lead" -> "Lead Carpenter"). */}
+              {loose.length > 0 && (
+                <section className="mt-8" aria-labelledby="loose-heading" data-testid="loose-matches">
+                  <h2 id="loose-heading" className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <Info className="w-4 h-4 text-slate-400" />
+                    Also mention "{q.trim()}", but not in the job title
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1 mb-3">
+                    {data.postings.length
+                      ? 'Only a few jobs have it in the title, so here are adverts that use the words somewhere. Many will be other kinds of job.'
+                      : 'No job titles match, so here are adverts that use the words somewhere. Many will be other kinds of job.'}
+                  </p>
+                  <div className="grid gap-3">
+                    {loose.map((job) => renderJob(job, 'loose'))}
                   </div>
                 </section>
               )}

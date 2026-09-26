@@ -527,8 +527,10 @@ export interface JobSearchResponse {
   /** Job-type filter: adverts that didn't say their type / said another. */
   excluded_type_unstated?: number
   excluded_other_type?: number
-  /** "phrase": the words were kept together; "words": matched one by one. */
-  match?: 'phrase' | 'words'
+  /** "title": every word in the job title; "words": anywhere in the advert. */
+  match?: 'title' | 'words'
+  /** Adverts that only mention the words somewhere. Shown apart, labelled. */
+  loose_matches?: JobPosting[]
 }
 
 /** Adzuna takes one place per query; the backend runs up to this many. */
