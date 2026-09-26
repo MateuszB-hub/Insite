@@ -30,7 +30,7 @@ import time
 from typing import Any
 
 from app.services.pathway_narrative import attach_narrative
-from app.services.labor import taxonomy
+from app.services.labor import learning, taxonomy
 from app.services.labor.onet import OnetFallback
 from app.services.labor import (
     LaborDataError,
@@ -305,6 +305,8 @@ async def build_career_pathway(
                 ),
                 "job_zone": match.get("job_zone"),
                 "skill_gaps": match["skill_gaps"],
+                "training": learning.training(match.get("job_zone")),
+                "links": learning.links(match["soc"], match.get("onet"), match["title"]),
                 "wage": _wage_dict(match_wage),
             })
 
@@ -317,6 +319,7 @@ async def build_career_pathway(
             {
                 **_occ_dict(occ, wage),
                 "readiness": readiness(current, occ, horizon_months),
+                **_specifics(current, current_wage, occ, wage),
             }
             for occ, wage in zip(neighbours, neighbour_wages)
         ],
@@ -366,6 +369,24 @@ async def narrate_career_pathway(
     if report.get("narrative"):
         _cache_put(key, report)
     return report
+
+
+def _specifics(current: Occupation, current_wage, occ: Occupation, wage) -> dict[str, Any]:
+    """What a move to `occ` means in facts: pay, training, skills, where to learn.
+
+    Replaces the model's per-role prose, which testers found generic and which
+    could contradict the readiness badge beside it.
+    """
+    pay_change = None
+    if (current_wage and wage and current_wage.annual_median is not None
+            and wage.annual_median is not None):
+        pay_change = wage.annual_median - current_wage.annual_median
+    return {
+        "pay_change": pay_change,
+        "training": learning.training(occ.job_zone),
+        "skill_gaps": taxonomy.skill_gaps(current.code, occ.code) if current.code else [],
+        "links": learning.links(occ.code, taxonomy.onet_code(occ.code), occ.title),
+    }
 
 
 def _status_with(occupation_source) -> list[dict[str, Any]]:

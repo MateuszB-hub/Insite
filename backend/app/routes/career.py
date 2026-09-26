@@ -34,6 +34,17 @@ class WageInfo(BaseModel):
     source: str | None = None
 
 
+class SkillGap(BaseModel):
+    skill: str
+    gap: float
+
+
+class LearningLink(BaseModel):
+    label: str
+    url: str
+    source: str
+
+
 class OccupationInfo(BaseModel):
     code: str
     title: str
@@ -45,11 +56,14 @@ class OccupationInfo(BaseModel):
     rationale: str | None = None
     readiness: str | None = None
     steps: list[str] = []
-
-
-class SkillGap(BaseModel):
-    skill: str
-    gap: float
+    # --- concrete facts about the move (pathways only) ---
+    #: Target median minus current median, BLS; None when either is missing.
+    pay_change: float | None = None
+    #: The O*NET Job Zone in plain words.
+    training: str | None = None
+    #: Skills the target needs clearly more of than the current role.
+    skill_gaps: list[SkillGap] = []
+    links: list[LearningLink] = []
 
 
 class TransferableRole(BaseModel):
@@ -65,6 +79,8 @@ class TransferableRole(BaseModel):
     job_zone: int | None = None
     skill_gaps: list[SkillGap] = []
     wage: WageInfo | None = None
+    training: str | None = None
+    links: list[LearningLink] = []
 
 
 class EmployerInfo(BaseModel):

@@ -143,6 +143,10 @@ def build_fact_sheet(report: dict[str, Any]) -> str:
         if p.get("description"):
             lines.append(f"      {p['description']}")
         lines.append(_wage_line("      pay", p.get("wage")))
+        if p.get("readiness"):
+            lines.append(f"      readiness (from O*NET data, final): {p['readiness']}")
+        if p.get("training"):
+            lines.append(f"      training: {p['training']}")
 
     hiring = report.get("hiring") or {}
     employers = hiring.get("top_employers") or []
@@ -197,10 +201,9 @@ def build_prompt(report: dict[str, Any]) -> str:
         "- Do NOT mention readiness in the rationale text, in any phrasing. "
         "Readiness is a separate field rendered as a badge; repeating it there "
         "is redundant and causes contradictions.\n"
-        "- Assign readiness honestly and DIFFERENTIATE: most people cannot "
-        "reach every listed role in this horizon. A management role, or one "
-        "needing a distinct skill base, is 'stretch' or 'long-term', not "
-        "'ready'. Do not mark everything 'ready'.\n"
+        "- Each destination's readiness is already decided from O*NET data and "
+        "shown to the reader. Copy it into the readiness field unchanged, and "
+        "never write anything that contradicts it.\n"
         "- Be specific and honest, including about risks. No filler.\n"
         "- Return a single JSON object matching the required schema."
     )
