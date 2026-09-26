@@ -22,13 +22,15 @@ distinguish measured values from scaffolding.
 """
 
 import asyncio
+import copy
+import dataclasses
 import logging
 import os
 import time
 from typing import Any
 
 from app.services.pathway_narrative import attach_narrative
-from app.services.labor import taxonomy
+from app.services.labor import learning, taxonomy
 from app.services.labor.onet import OnetFallback
 from app.services.labor import (
     LaborDataError,
@@ -54,7 +56,7 @@ def _cache_get(key: tuple) -> dict[str, Any] | None:
     if not hit:
         return None
     stored_at, value = hit
-    if time.monotonic() - stored_at > CACHE_TTL:
+    if time.time() - stored_at > CACHE_TTL:
         _cache.pop(key, None)
         return None
     return value
@@ -64,11 +66,25 @@ def _cache_put(key: tuple, value: dict[str, Any]) -> None:
     if len(_cache) >= CACHE_MAX:
         # Drop the oldest entry; ordinary dicts preserve insertion order.
         _cache.pop(next(iter(_cache)), None)
-    _cache[key] = (time.monotonic(), value)
+    # Wall-clock, not monotonic: macOS pauses the monotonic clock while the
+    # machine sleeps, which kept entries "fresh" for hours on the dev Mac.
+    _cache[key] = (time.time(), value)
 
 
 def clear_pathway_cache() -> None:
     _cache.clear()
+
+
+def _pathway_key(current_role, industry, horizon_months, location,
+                 include_narrative, provider_name) -> tuple:
+    return (
+        current_role.strip().lower(),
+        (industry or "").strip().lower(),
+        horizon_months,
+        (location or "").strip().lower(),
+        include_narrative,
+        provider_name or "",
+    )
 
 #: Rough mapping from a horizon in months to how far a move can reasonably
 #: stretch. O*NET Job Zone difference is the proxy: a year of experience
@@ -79,6 +95,69 @@ def _reachable(horizon_months: int, occupation: Occupation) -> bool:
     if horizon_months >= 24:
         return True
     return occupation.job_zone <= 4
+
+
+def _with_job_zone(occ: Occupation) -> Occupation:
+    """Fill a missing O*NET Job Zone from the vendored taxonomy.
+
+    Live O*NET "related" results carry no zone, and without one both the
+    horizon filter and the readiness badge are guesses.
+    """
+    if occ.job_zone is not None or not occ.code:
+        return occ
+    entry = taxonomy.get(occ.code)
+    zone = entry.get("job_zone") if entry else None
+    return dataclasses.replace(occ, job_zone=zone) if zone is not None else occ
+
+
+#: Skill shortfall (see taxonomy.skill_shortfall) that still counts as
+#: ready / a stretch. Calibrated on real pairs: LPN from RN, bookkeeper from
+#: accountant, tutor from teacher all 0; middle-school from secondary teacher
+#: 1.4; sales manager from marketing manager 0.6, nurse practitioner from RN
+#: 1.3 (the zone step makes that one a stretch); financial manager from
+#: accountant 3.6; health services manager from RN 6.6, retail supervisor
+#: from salesperson 12.8. O*NET skill levels do not capture seniority or
+#: licensing, which is why the Job Zone check runs alongside.
+READY_SHORTFALL = 2.0
+STRETCH_SHORTFALL = 5.0
+
+_SEVERITY = {"ready": 0, "stretch": 1, "long-term": 2}
+
+
+def readiness(current: Occupation, target: Occupation, horizon_months: int) -> str | None:
+    """Ready now / stretch / longer term, from O*NET data -- no model involved.
+
+    Two independent signals, and the more demanding one wins:
+      * Job Zone step (the level of preparation; zone 4 ~ a bachelor's,
+        5 ~ a graduate degree): two levels up is longer term, one level up a
+        stretch -- or longer term when the horizon is under a year.
+      * Skill shortfall: how far the target's skill levels exceed the
+        person's current role, which is what separates a sideways move from
+        a promotion at the same zone (accountant to financial manager).
+    Unknown on both counts: no badge rather than a guess.
+    """
+    by_zone = None
+    if current.job_zone is not None and target.job_zone is not None:
+        step = target.job_zone - current.job_zone
+        if step >= 2:
+            by_zone = "long-term"
+        elif step == 1:
+            by_zone = "stretch" if horizon_months >= 12 else "long-term"
+        else:
+            by_zone = "ready"
+
+    by_skills = None
+    shortfall = taxonomy.skill_shortfall(current.code, target.code) if current.code else None
+    if shortfall is not None:
+        if shortfall < READY_SHORTFALL:
+            by_skills = "ready"
+        elif shortfall < STRETCH_SHORTFALL:
+            by_skills = "stretch"
+        else:
+            by_skills = "long-term"
+
+    known = [r for r in (by_zone, by_skills) if r is not None]
+    return max(known, key=_SEVERITY.__getitem__) if known else None
 
 
 async def _resolve_occupations(source, current_role: str):
@@ -156,14 +235,8 @@ async def build_career_pathway(
     Facts are gathered deterministically first. The narrative overlay is added
     last and is strictly optional -- a model failure still yields the facts.
     """
-    key = (
-        current_role.strip().lower(),
-        (industry or "").strip().lower(),
-        horizon_months,
-        (location or "").strip().lower(),
-        include_narrative,
-        provider_name or "",
-    )
+    key = _pathway_key(current_role, industry, horizon_months, location,
+                       include_narrative, provider_name)
     cached = _cache_get(key)
     if cached is not None:
         logger.info("pathway cache hit for %r", current_role)
@@ -180,10 +253,17 @@ async def build_career_pathway(
         occupations, current_role
     )
 
+    current = _with_job_zone(current)
+    neighbours = [_with_job_zone(occ) for occ in neighbours]
     neighbours = [occ for occ in neighbours if _reachable(horizon_months, occ)]
 
     # Wages for the current role and every destination, concurrently.
+    # An unexpected failure (usually a BLS timeout) is transient, so a report
+    # that hit one is not cached -- otherwise wages vanish until the TTL ends.
+    wage_failed = False
+
     async def _wage(occ: Occupation):
+        nonlocal wage_failed
         if not occ.code:
             return None
         try:
@@ -191,7 +271,8 @@ async def build_career_pathway(
         except LaborDataError:
             return None
         except Exception as exc:
-            logger.warning("wage lookup failed for %s: %s", occ.code, exc)
+            wage_failed = True
+            logger.warning("wage lookup failed for %s: %r", occ.code, exc)
             return None
 
     wage_results = await asyncio.gather(
@@ -214,8 +295,18 @@ async def build_career_pathway(
                 "description": match["description"],
                 "similarity": match["similarity"],
                 "requires_more_training": match["requires_more_training"],
+                # Same rule as the pathway list, so one page never gives
+                # two answers for the same occupation.
+                "readiness": readiness(
+                    current,
+                    Occupation(code=match["soc"], title=match["title"],
+                               job_zone=match.get("job_zone")),
+                    horizon_months,
+                ),
                 "job_zone": match.get("job_zone"),
                 "skill_gaps": match["skill_gaps"],
+                "training": learning.training(match.get("job_zone")),
+                "links": learning.links(match["soc"], match.get("onet"), match["title"]),
                 "wage": _wage_dict(match_wage),
             })
 
@@ -225,7 +316,11 @@ async def build_career_pathway(
         "horizon_months": horizon_months,
         "current_occupation": _occ_dict(current, current_wage),
         "pathways": [
-            _occ_dict(occ, wage)
+            {
+                **_occ_dict(occ, wage),
+                "readiness": readiness(current, occ, horizon_months),
+                **_specifics(current, current_wage, occ, wage),
+            }
             for occ, wage in zip(neighbours, neighbour_wages)
         ],
         "transferable": transferable,
@@ -238,8 +333,60 @@ async def build_career_pathway(
     if include_narrative:
         report = await attach_narrative(report, provider_name=provider_name)
 
-    _cache_put(key, report)
+    if not wage_failed:
+        _cache_put(key, report)
     return report
+
+
+async def narrate_career_pathway(
+    current_role: str,
+    industry: str | None = None,
+    horizon_months: int = 12,
+    location: str | None = None,
+    provider_name: str | None = None,
+) -> dict[str, Any]:
+    """The model-written layer, requested after the facts are on screen.
+
+    The facts come from the cache the first request just filled, so this
+    costs only the model call. The cached facts are never modified, and the
+    narrated report shares its cache entry with include_narrative=True.
+    """
+    key = _pathway_key(current_role, industry, horizon_months, location,
+                       True, provider_name)
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+
+    facts = await build_career_pathway(
+        current_role=current_role,
+        industry=industry,
+        horizon_months=horizon_months,
+        location=location,
+        include_narrative=False,
+    )
+    report = await attach_narrative(copy.deepcopy(facts), provider_name=provider_name)
+    # A failed model call is worth retrying, so only a finished summary is kept.
+    if report.get("narrative"):
+        _cache_put(key, report)
+    return report
+
+
+def _specifics(current: Occupation, current_wage, occ: Occupation, wage) -> dict[str, Any]:
+    """What a move to `occ` means in facts: pay, training, skills, where to learn.
+
+    Replaces the model's per-role prose, which testers found generic and which
+    could contradict the readiness badge beside it.
+    """
+    pay_change = None
+    if (current_wage and wage and current_wage.annual_median is not None
+            and wage.annual_median is not None):
+        pay_change = wage.annual_median - current_wage.annual_median
+    return {
+        "pay_change": pay_change,
+        "training": learning.training(occ.job_zone),
+        "skill_gaps": taxonomy.skill_gaps(current.code, occ.code) if current.code else [],
+        "links": learning.links(occ.code, taxonomy.onet_code(occ.code), occ.title),
+    }
 
 
 def _status_with(occupation_source) -> list[dict[str, Any]]:

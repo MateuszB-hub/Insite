@@ -240,16 +240,63 @@ def transferable(
     return [occ for _, occ in scored[:limit]]
 
 
+#: A skill counts toward the shortfall only when the target job really uses
+#: it and the gap is bigger than O*NET's own measurement noise (standard
+#: errors run ~0.3-0.5 on the 0-7 level scale). Summing every tiny gap let
+#: skills a job barely needs ("Repairing" for a systems analyst) swamp the
+#: ones that matter.
+SHORTFALL_MIN_GAP = 0.5
+SHORTFALL_MIN_LEVEL = 3.0
+
+
+def skill_shortfall(from_code: str, to_code: str) -> float | None:
+    """How far `to_code` needs more skill than `from_code` has, summed.
+
+    Only the skills the target job uses (level >= SHORTFALL_MIN_LEVEL), and
+    only gaps of at least SHORTFALL_MIN_GAP. Being better at something the
+    target needs less of does not offset a real gap. None when either side
+    has no skill data (O*NET has none for some occupations, e.g. most
+    military).
+    """
+    mine = (_by_code().get(from_code) or {}).get("skills")
+    theirs = (_by_code().get(to_code) or {}).get("skills")
+    if not mine or not theirs:
+        return None
+    return sum(
+        t - m for m, t in zip(mine, theirs)
+        if t - m >= SHORTFALL_MIN_GAP and t >= SHORTFALL_MIN_LEVEL
+    )
+
+
 def _gaps(mine: list[float], theirs: list[float], top: int = 3) -> list[dict]:
-    """Dimensions where the target needs more than the person currently has."""
+    """Skills the target needs clearly more of, biggest first.
+
+    The same filter as skill_shortfall: skills the job really uses, gaps above
+    O*NET's measurement noise. Without it the list led with skills a job
+    barely needs ("Repairing" for a systems analyst).
+    """
     names = skill_names()
     short = [
         {"skill": names[i], "gap": round(theirs[i] - mine[i], 2)}
         for i in range(len(names))
-        if theirs[i] - mine[i] > 0.25
+        if theirs[i] - mine[i] >= SHORTFALL_MIN_GAP and theirs[i] >= SHORTFALL_MIN_LEVEL
     ]
     short.sort(key=lambda g: -g["gap"])
     return short[:top]
+
+
+def skill_gaps(from_code: str, to_code: str, top: int = 3) -> list[dict]:
+    """_gaps by SOC code; empty when either side has no skill data."""
+    mine = (_by_code().get(from_code) or {}).get("skills")
+    theirs = (_by_code().get(to_code) or {}).get("skills")
+    if not mine or not theirs:
+        return []
+    return _gaps(mine, theirs, top)
+
+
+def onet_code(code: str) -> str | None:
+    """The full O*NET-SOC code (29-1171 -> 29-1171.00) for linking."""
+    return (_by_code().get(code) or {}).get("onet")
 
 
 def skill_profile(code: str) -> dict[str, float]:

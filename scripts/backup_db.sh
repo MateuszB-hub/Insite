@@ -62,10 +62,14 @@ fi
 SIZE=$(/usr/bin/stat -f%z "$OUT")
 [ "$SIZE" -gt 1000 ] || { rm -f "$OUT"; fail "backup suspiciously small ($SIZE bytes)"; }
 
-# Prove it decrypts and looks like SQL. An untested backup is a guess.
+# Prove it decrypts, decompresses end to end, and is a COMPLETE dump (pg_dump
+# writes this marker last, so a truncated dump fails). An untested backup is
+# a guess. grep -c, not `head | grep -q`: under pipefail, stopping early
+# SIGPIPEs openssl/gzip and fails a good backup once the dump outgrows the
+# pipe buffer (happened at ~26 KB, 2026-09-26).
 if ! /usr/bin/openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
       -pass "file:$PASS_FILE" -in "$OUT" \
-      | /usr/bin/gzip -dc | /usr/bin/head -40 | /usr/bin/grep -q "PostgreSQL database dump"; then
+      | /usr/bin/gzip -dc | /usr/bin/grep -c "PostgreSQL database dump complete" >/dev/null; then
   fail "verification failed: $OUT did not decrypt to a valid dump"
 fi
 

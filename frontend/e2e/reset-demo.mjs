@@ -2,7 +2,7 @@
 import { chromium } from 'playwright'
 import { readFileSync } from 'node:fs'
 
-const BASE = 'http://localhost:5173'
+const BASE = process.env.DEMO_BASE_URL ?? 'http://localhost:5173'
 const EMAIL = `reset+${Date.now()}@example.com`
 const PW1 = 'the original passphrase'
 const PW2 = 'the replacement passphrase'
@@ -16,10 +16,10 @@ const p = await b.newPage({ viewport: { width: 1400, height: 1000 } })
 // register, then forget the password
 await p.goto(`${BASE}/login`, { waitUntil: 'networkidle' })
 await p.getByRole('button', { name: 'Register' }).click()
-await p.fill('#name', 'Reset Test'); await p.fill('#email', EMAIL); await p.fill('#password', PW1)
+await p.fill('#name', 'Reset Test'); await p.fill('#email', EMAIL); await p.fill('#password', PW1); await p.fill('#password-confirm', PW1)
 await p.getByRole('checkbox').check()
 await p.getByRole('button', { name: 'Create Account' }).click()
-await p.waitForURL('**/jobs', { timeout: 20000 })
+await p.waitForURL('**/home', { timeout: 20000 })
 await p.evaluate(() => fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-Insite-CSRF': '1' } }))
 
 // "Forgot password?" is reachable from the login card
@@ -66,7 +66,7 @@ await p.getByRole('button', { name: 'Sign In' }).click(); await p.waitForTimeout
 ok('old password rejected', p.url().includes('/login'))
 await p.fill('#email', EMAIL); await p.fill('#password', PW2)
 await p.getByRole('button', { name: 'Sign In' }).click()
-await p.waitForURL('**/jobs', { timeout: 20000 })
+await p.waitForURL('**/home', { timeout: 20000 })
 ok('new password works', true)
 
 await b.close()

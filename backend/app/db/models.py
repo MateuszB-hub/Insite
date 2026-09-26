@@ -29,6 +29,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -372,6 +373,10 @@ class ApplicationEvent(Base):
     #: Who moved it. Null for system transitions.
     actor_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    #: This event reverses the previous change (a misclick fix). History is
+    #: kept rather than rewritten; replaying the events, with each undo
+    #: popping the stack, gives the status to return to.
+    is_undo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     application: Mapped[Application] = relationship(back_populates="events")

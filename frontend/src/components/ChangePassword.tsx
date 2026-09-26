@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Check, KeyRound, Loader2 } from 'lucide-react'
 import { changePassword } from '../lib/api'
+import PasswordInput from './PasswordInput'
 
 const MIN = 12
 
@@ -57,43 +58,37 @@ export default function ChangePassword() {
           <label htmlFor="cur" className="block text-sm font-medium text-slate-700 mb-1">
             Current password
           </label>
-          <input
+          <PasswordInput
             id="cur"
-            type="password"
             autoComplete="current-password"
             value={current}
-            onChange={(e) => setCurrent(e.target.value)}
+            onChange={setCurrent}
             className={field}
-            required
           />
         </div>
         <div>
           <label htmlFor="new" className="block text-sm font-medium text-slate-700 mb-1">
             New password
           </label>
-          <input
+          <PasswordInput
             id="new"
-            type="password"
             autoComplete="new-password"
             value={next}
-            onChange={(e) => setNext(e.target.value)}
+            onChange={setNext}
             className={field}
             placeholder={`At least ${MIN} characters`}
-            required
           />
         </div>
         <div>
           <label htmlFor="conf" className="block text-sm font-medium text-slate-700 mb-1">
             Confirm new password
           </label>
-          <input
+          <PasswordInput
             id="conf"
-            type="password"
             autoComplete="new-password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={setConfirm}
             className={field}
-            required
           />
         </div>
 

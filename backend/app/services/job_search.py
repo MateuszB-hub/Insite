@@ -20,12 +20,14 @@ the filters operate on those classifications rather than on the raw numbers.
 A filter that cannot be honest returns fewer results rather than wrong ones.
 """
 
+import asyncio
 import hashlib
 import logging
 import os
 import re
 from dataclasses import dataclass, field
 from enum import Enum
+from itertools import chain, zip_longest
 from typing import Any
 
 import httpx
@@ -166,6 +168,13 @@ class SearchResult:
     excluded_below_salary: int = 0
     #: Adverts folded into another entry because the text was identical.
     collapsed_duplicates: int = 0
+    #: Places searched, and any whose lookup failed (the rest still return).
+    locations_searched: list[str] = field(default_factory=list)
+    failed_locations: list[str] = field(default_factory=list)
+    #: With a salary floor: adverts whose ESTIMATED pay clears it, kept apart
+    #: from employer-stated matches so the two are never confused.
+    estimated_matches: list["JobPosting"] = field(default_factory=list)
+    pages_fetched: int = 0
 
 
 def classify_salary(raw: dict[str, Any]) -> SalarySource:
@@ -304,51 +313,207 @@ def _collapse_duplicates(postings: list[JobPosting]) -> tuple[list[JobPosting], 
     return list(seen.values()), collapsed
 
 
+#: Adzuna takes one place per query, so several places cost one request each.
+MAX_LOCATIONS = 3
+
+
+def normalize_locations(locations: str | list[str] | None) -> list[str]:
+    """Trim, drop blanks and case-insensitive repeats, cap at MAX_LOCATIONS."""
+    if locations is None:
+        return []
+    if isinstance(locations, str):
+        locations = [locations]
+    seen: set[str] = set()
+    out: list[str] = []
+    for place in locations:
+        place = place.strip()
+        if place and place.lower() not in seen:
+            seen.add(place.lower())
+            out.append(place)
+    return out[:MAX_LOCATIONS]
+
+
+def _interleave(pages: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Round-robin across places so the first city cannot crowd out the rest
+    when the result limit is reached."""
+    return [raw for raw in chain.from_iterable(zip_longest(*pages)) if raw is not None]
+
+
+#: Extra pages fetched per place when filters leave too few results. Each
+#: page is one Adzuna request, and the free tier is rate-limited.
+MAX_PAGES = 3
+
+
+@dataclass
+class _Filtered:
+    kept: list[JobPosting] = field(default_factory=list)
+    estimated: list[JobPosting] = field(default_factory=list)
+    excluded_estimated_salary: int = 0
+    excluded_no_salary: int = 0
+    excluded_not_remote: int = 0
+    excluded_below_salary: int = 0
+
+
+def _apply_filters(
+    candidates: list[JobPosting],
+    *,
+    salary_min: float | None,
+    require_stated_salary: bool,
+    remote_only: bool,
+    include_conflicted_remote: bool,
+    limit: int,
+) -> _Filtered:
+    """Sort candidates into shown / shown-as-estimated / excluded (counted)."""
+    out = _Filtered()
+    for posting in candidates:
+        if len(out.kept) >= limit and len(out.estimated) >= limit:
+            break
+
+        if remote_only:
+            allowed = {RemoteClaim.remote}
+            if include_conflicted_remote:
+                allowed.add(RemoteClaim.conflicted)
+            if posting.remote_claim not in allowed:
+                out.excluded_not_remote += 1
+                continue
+
+        if require_stated_salary and posting.salary_source is not SalarySource.stated:
+            if posting.salary_source is SalarySource.estimated:
+                out.excluded_estimated_salary += 1
+            else:
+                out.excluded_no_salary += 1
+            continue
+
+        if salary_min is not None:
+            if posting.salary_source is SalarySource.absent:
+                out.excluded_no_salary += 1
+                continue
+            # Compare against the TOP of the advertised band: a job listed
+            # at $100k-$150k can pay $120k, so excluding it would be the
+            # mirror of the dishonesty we are fixing. The range is shown, so
+            # the user judges it themselves.
+            if (posting.salary_max or posting.salary_min or 0) < salary_min:
+                out.excluded_below_salary += 1
+                continue
+            # Only an employer's figure can truly clear a floor. A board's
+            # estimate that clears it is still useful -- employer-stated pay
+            # is rare (2 of 50 for "software engineer") -- so it is shown in
+            # its own, labelled list instead of being hidden or mixed in.
+            if posting.salary_source is SalarySource.estimated:
+                if len(out.estimated) < limit:
+                    out.estimated.append(posting)
+                continue
+
+        if len(out.kept) < limit:
+            out.kept.append(posting)
+    return out
+
+
 async def search_jobs(
     query: str,
-    location: str | None = None,
+    locations: str | list[str] | None = None,
     *,
     salary_min: float | None = None,
     require_stated_salary: bool = False,
     remote_only: bool = False,
     include_conflicted_remote: bool = False,
     collapse_duplicates: bool = True,
+    max_days_old: int | None = None,
     limit: int = 30,
 ) -> SearchResult:
     """Search postings and apply filters that never fabricate certainty.
 
-    `require_stated_salary` is the honest counterpart to a salary filter: it
-    drops anything whose figure the aggregator guessed, so a salary floor
-    means what the user thinks it means. Applying `salary_min` without it
-    would filter on predicted numbers.
+    With a salary floor, employer-stated pay at or above it is the main
+    result; board estimates at or above it come back separately in
+    `estimated_matches`, labelled. `require_stated_salary` drops estimates
+    entirely. `max_days_old` keeps to recent adverts: testers found anything
+    older than about a week is usually already filled.
     """
     app_id = os.getenv("ADZUNA_APP_ID", "")
     app_key = os.getenv("ADZUNA_APP_KEY", "")
     if not (app_id and app_key):
         raise RuntimeError("ADZUNA_APP_ID / ADZUNA_APP_KEY not set")
 
-    params: dict[str, Any] = {
+    per_page = min(50, max(limit * 2, 20))
+    base: dict[str, Any] = {
         "app_id": app_id, "app_key": app_key,
         "what": query,
         # Ask for more than we need: honest filtering discards a lot.
-        "results_per_page": min(50, max(limit * 2, 20)),
+        "results_per_page": per_page,
     }
-    if location:
-        params["where"] = location
+    if salary_min is not None:
+        # Pre-narrow at the source so the page holds better-paid jobs.
+        # Verified live: Adzuna keeps ranges that reach the floor ($70k-$120k
+        # survives a $100k floor), so this hides nothing our own rule admits.
+        base["salary_min"] = int(salary_min)
+    if max_days_old is not None:
+        base["max_days_old"] = max_days_old
+    places = normalize_locations(locations)
+    targets: list[str | None] = list(places) or [None]
+
+    async def fetch(client: httpx.AsyncClient, place: str | None, page: int) -> dict[str, Any]:
+        params = dict(base)
+        if place:
+            params["where"] = place
+        response = await client.get(f"{BASE_URL}/jobs/{COUNTRY}/search/{page}", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    result = SearchResult(locations_searched=places)
+    #: Raw adverts per place, in page order.
+    pages: dict[str | None, list[dict[str, Any]]] = {}
+    counts: dict[str | None, int] = {}
+
+    def build() -> list[JobPosting]:
+        merged = _interleave([pages[t] for t in targets if t in pages])
+        postings = [to_posting(raw) for raw in merged]
+        if collapse_duplicates:
+            postings, result.collapsed_duplicates = _collapse_duplicates(postings)
+        return postings
+
+    def filtered(postings: list[JobPosting]) -> _Filtered:
+        return _apply_filters(
+            postings, salary_min=salary_min, require_stated_salary=require_stated_salary,
+            remote_only=remote_only, include_conflicted_remote=include_conflicted_remote,
+            limit=limit)
 
     async with httpx.AsyncClient(timeout=40.0) as client:
-        response = await client.get(f"{BASE_URL}/jobs/{COUNTRY}/search/1", params=params)
-        response.raise_for_status()
-        payload = response.json()
+        outcomes = await asyncio.gather(
+            *(fetch(client, t, 1) for t in targets), return_exceptions=True)
+        for target, outcome in zip(targets, outcomes):
+            if isinstance(outcome, BaseException):
+                # One bad place should not sink the others; say which one failed.
+                logger.warning("job search failed for one location: %s", type(outcome).__name__)
+                result.failed_locations.append(target or "")
+                continue
+            pages[target] = list(outcome.get("results", []))
+            counts[target] = outcome.get("count") or 0
+        if not pages:
+            raise next(o for o in outcomes if isinstance(o, BaseException))
+        result.pages_fetched = 1
 
-    result = SearchResult(total_available=payload.get("count"))
+        # Filters that discard most adverts get another page or two, but only
+        # while places still have more to give.
+        filtering = salary_min is not None or require_stated_salary or remote_only
+        for page in range(2, MAX_PAGES + 1):
+            if not filtering or len(filtered(build()).kept) >= limit:
+                break
+            more = [t for t in pages if counts[t] > len(pages[t]) and len(pages[t]) >= per_page * (page - 1)]
+            if not more:
+                break
+            extra = await asyncio.gather(
+                *(fetch(client, t, page) for t in more), return_exceptions=True)
+            for target, outcome in zip(more, extra):
+                if not isinstance(outcome, BaseException):
+                    pages[target].extend(outcome.get("results", []))
+            result.pages_fetched = page
 
-    candidates = [to_posting(raw) for raw in payload.get("results", [])]
+    result.total_available = sum(counts.values()) if counts else None
 
-    if collapse_duplicates:
-        candidates, result.collapsed_duplicates = _collapse_duplicates(candidates)
+    candidates = build()
 
-    # Attach what we knew about each advert before today.
+    # Attach what we knew about each advert before today. Once per search:
+    # every call counts as a sighting.
     known = _record_sightings(candidates)
     for posting in candidates:
         info = known.get(posting.fingerprint)
@@ -361,39 +526,11 @@ async def search_jobs(
             and _age_days(posting.created) < _observed_days(info["first_seen"]) - 3
         )
 
-    for posting in candidates:
-
-        if require_stated_salary and posting.salary_source is not SalarySource.stated:
-            if posting.salary_source is SalarySource.estimated:
-                result.excluded_estimated_salary += 1
-            else:
-                result.excluded_no_salary += 1
-            continue
-
-        if salary_min is not None:
-            # Only a figure we trust can clear a floor. An absent or guessed
-            # salary is not evidence the job pays enough.
-            if posting.salary_source is not SalarySource.stated:
-                result.excluded_no_salary += 1
-                continue
-            # Compare against the TOP of the advertised band: a job listed
-            # at $100k-$150k can pay $120k, so excluding it would be the
-            # mirror of the dishonesty we are fixing. The range is shown, so
-            # the user judges it themselves.
-            if (posting.salary_max or posting.salary_min or 0) < salary_min:
-                result.excluded_below_salary += 1
-                continue
-
-        if remote_only:
-            allowed = {RemoteClaim.remote}
-            if include_conflicted_remote:
-                allowed.add(RemoteClaim.conflicted)
-            if posting.remote_claim not in allowed:
-                result.excluded_not_remote += 1
-                continue
-
-        result.postings.append(posting)
-        if len(result.postings) >= limit:
-            break
-
+    out = filtered(candidates)
+    result.postings = out.kept
+    result.estimated_matches = out.estimated
+    result.excluded_estimated_salary = out.excluded_estimated_salary
+    result.excluded_no_salary = out.excluded_no_salary
+    result.excluded_not_remote = out.excluded_not_remote
+    result.excluded_below_salary = out.excluded_below_salary
     return result

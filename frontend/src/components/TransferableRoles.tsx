@@ -1,5 +1,7 @@
-import { ArrowUpRight, GraduationCap, Check } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import type { TransferableRole } from '../lib/api'
+import MoveFacts from './MoveFacts'
+import ReadinessBadge from './ReadinessBadge'
 
 /** Sign goes outside the currency symbol: -$17,200, not $-17,200. */
 const money = (n?: number | null) => {
@@ -14,7 +16,7 @@ const money = (n?: number | null) => {
  * Distinct from the pathway list above it, which answers "what is the next
  * rung up". Most people are not choosing between two offers; they want to
  * know where else they already fit. Matches come from O*NET skill profiles,
- * and each is labelled honestly as reachable now or needing more training.
+ * and each carries the same readiness badge as the pathway list above.
  */
 export default function TransferableRoles({
   roles,
@@ -75,23 +77,10 @@ export default function TransferableRoles({
                   </div>
                 </div>
 
-                {role.requires_more_training ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
-                    <GraduationCap className="w-3 h-3" /> More training
-                  </span>
-                ) : (
-                  <span className="shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                    <Check className="w-3 h-3" /> Likely qualify now
-                  </span>
-                )}
+                <ReadinessBadge readiness={role.readiness} />
               </div>
 
-              {role.skill_gaps.length > 0 && (
-                <p className="text-xs text-slate-500 mt-2">
-                  Worth strengthening:{' '}
-                  {role.skill_gaps.map((g) => g.skill).join(', ')}
-                </p>
-              )}
+              <MoveFacts training={role.training} gaps={role.skill_gaps} links={role.links} />
             </article>
           )
         })}

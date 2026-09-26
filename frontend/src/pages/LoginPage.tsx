@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2, Lock } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 
 const MIN_PASSWORD = 12
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [inviteCode, setInviteCode] = useState(invitedWith)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +32,7 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const destination = (location.state as { from?: string } | null)?.from ?? '/jobs'
+  const destination = (location.state as { from?: string } | null)?.from ?? '/home'
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -39,6 +41,10 @@ export default function LoginPage() {
 
     if (isRegister && password.length < MIN_PASSWORD) {
       setError(`Password must be at least ${MIN_PASSWORD} characters.`)
+      return
+    }
+    if (isRegister && password !== confirmPassword) {
+      setError('Passwords do not match.')
       return
     }
     if (isRegister && !acceptTerms) {
@@ -114,14 +120,14 @@ export default function LoginPage() {
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(v) => {
+                  setPassword(v)
+                  setError(null)
+                }}
                 autoComplete={isRegister ? 'new-password' : 'current-password'}
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
                 placeholder={isRegister ? `At least ${MIN_PASSWORD} characters` : '••••••••'}
               />
               {isRegister && (
@@ -130,6 +136,27 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
+
+            {isRegister && (
+              <div>
+                <label htmlFor="password-confirm" className="block text-sm font-medium text-slate-700 mb-1">
+                  Confirm password
+                </label>
+                <PasswordInput
+                  id="password-confirm"
+                  value={confirmPassword}
+                  onChange={(v) => {
+                    setConfirmPassword(v)
+                    setError(null)
+                  }}
+                  autoComplete="new-password"
+                  placeholder="Type it again"
+                />
+                {confirmPassword !== '' && confirmPassword !== password && (
+                  <p className="text-xs text-red-600 mt-1">Doesn't match yet.</p>
+                )}
+              </div>
+            )}
 
             {isRegister && (
               <div>

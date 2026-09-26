@@ -118,6 +118,18 @@ export interface OccupationInfo {
   rationale?: string | null
   readiness?: Readiness | null
   steps: string[]
+  /** Target minus current BLS median. */
+  pay_change?: number | null
+  /** O*NET Job Zone in plain words. */
+  training?: string | null
+  skill_gaps?: SkillGap[]
+  links?: LearningLink[]
+}
+
+export interface LearningLink {
+  label: string
+  url: string
+  source: string
 }
 
 export interface NarrativeInfo {
@@ -171,9 +183,13 @@ export interface TransferableRole {
   similarity: number
   /** O*NET places this in a higher Job Zone than the current role. */
   requires_more_training: boolean
+  /** Same rule as the pathway list's badge. */
+  readiness?: Readiness | null
   job_zone?: number | null
   skill_gaps: SkillGap[]
   wage?: WageInfo | null
+  training?: string | null
+  links?: LearningLink[]
 }
 
 export interface CareerPathwayResult {
@@ -190,15 +206,17 @@ export interface CareerPathwayResult {
   narrative_status: string
 }
 
-export async function fetchCareerPathway(params: {
+export interface CareerPathwayParams {
   currentRole: string
   industry?: string
   horizonMonths?: number
   location?: string
   includeNarrative?: boolean
   signal?: AbortSignal
-}): Promise<CareerPathwayResult> {
-  const res = await apiFetch('/api/career-pathway', {
+}
+
+async function postPathway(path: string, params: CareerPathwayParams): Promise<CareerPathwayResult> {
+  const res = await apiFetch(path, {
     ...withCreds,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -214,6 +232,14 @@ export async function fetchCareerPathway(params: {
   if (!res.ok) throw new Error(await readError(res))
   return res.json()
 }
+
+export const fetchCareerPathway = (params: CareerPathwayParams) =>
+  postPathway('/api/career-pathway', params)
+
+/** The same report with the model's summary: the slow part, asked for after
+ *  the facts are already on screen. */
+export const fetchPathwayNarrative = (params: CareerPathwayParams) =>
+  postPathway('/api/career-pathway/narrative', params)
 
 
 // ---------------------------------------------------------------------------
@@ -297,6 +323,8 @@ export interface ApplicationEvent {
   from_status?: string | null
   to_status: string
   note?: string | null
+  /** This entry reverses the previous change (a misclick fix). */
+  is_undo?: boolean
   occurred_at: string
 }
 
@@ -313,6 +341,17 @@ export interface Application {
   job_url?: string | null
   fingerprint?: string | null
   source: string
+  /** There is a previous status to go back to. */
+  can_undo: boolean
+}
+
+/** Tabs on the Applications page; mirrors STATUS_GROUPS on the server. */
+export type ApplicationGroup = 'all' | 'active' | 'interviewing' | 'offers' | 'closed'
+
+export interface ApplicationPage {
+  items: Application[]
+  total: number
+  counts: Record<ApplicationGroup, number>
 }
 
 export interface Profile {
@@ -331,7 +370,34 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json()
 }
 
-export const fetchMyApplications = () => getJson<Application[]>('/api/applications')
+export function fetchMyApplications(params: {
+  group?: ApplicationGroup
+  q?: string
+  sort?: 'updated' | 'added'
+  limit?: number
+  offset?: number
+} = {}): Promise<ApplicationPage> {
+  const qs = new URLSearchParams()
+  if (params.group && params.group !== 'all') qs.set('group', params.group)
+  if (params.q?.trim()) qs.set('q', params.q.trim())
+  if (params.sort) qs.set('sort', params.sort)
+  if (params.limit) qs.set('limit', String(params.limit))
+  if (params.offset) qs.set('offset', String(params.offset))
+  const query = qs.toString()
+  return getJson<ApplicationPage>(`/api/applications${query ? `?${query}` : ''}`)
+}
+
+/** Go back to the previous status. Recorded in the timeline, not erased. */
+export async function undoApplicationStatus(id: string): Promise<Application> {
+  const res = await apiFetch(`/api/applications/${id}/undo`, { ...withCreds, method: 'POST' })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
+}
+
+export async function removeApplication(id: string): Promise<void> {
+  const res = await apiFetch(`/api/applications/${id}`, { ...withCreds, method: 'DELETE' })
+  if (!res.ok) throw new Error(await readError(res))
+}
 
 export const fetchProfile = () => getJson<Profile>('/api/me/profile')
 
@@ -450,23 +516,33 @@ export interface JobSearchResponse {
   excluded_not_remote: number
   excluded_below_salary: number
   collapsed_duplicates: number
+  locations_searched: string[]
+  failed_locations: string[]
+  /** With a salary floor: board-ESTIMATED pay at or above it, kept apart. */
+  estimated_matches: JobPosting[]
+  pages_fetched: number
 }
+
+/** Adzuna takes one place per query; the backend runs up to this many. */
+export const MAX_JOB_LOCATIONS = 3
 
 export async function searchJobs(params: {
   q: string
-  where?: string
+  where?: string[]
   salaryMin?: number
   requireStatedSalary?: boolean
   remoteOnly?: boolean
   includeConflictedRemote?: boolean
+  maxDaysOld?: number
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
   const qs = new URLSearchParams({ q: params.q })
-  if (params.where) qs.set('where', params.where)
+  for (const place of params.where ?? []) qs.append('where', place)
   if (params.salaryMin) qs.set('salary_min', String(params.salaryMin))
   if (params.requireStatedSalary) qs.set('require_stated_salary', 'true')
   if (params.remoteOnly) qs.set('remote_only', 'true')
   if (params.includeConflictedRemote) qs.set('include_conflicted_remote', 'true')
+  if (params.maxDaysOld) qs.set('max_days_old', String(params.maxDaysOld))
 
   const res = await apiFetch(`/api/jobs/search?${qs}`, { ...withCreds, signal: params.signal })
   if (!res.ok) throw new Error(await readError(res))

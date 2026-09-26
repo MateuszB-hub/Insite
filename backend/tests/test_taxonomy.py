@@ -95,7 +95,8 @@ def test_transferable_finds_cross_field_matches():
 
 def test_transferable_flags_training_honestly():
     """A cook can supervise now; becoming a chef needs more."""
-    matches = {m["title"]: m for m in taxonomy.transferable("35-2014", limit=8)}
+    # Top 12: in O*NET 30.0 chefs rank 11th among a restaurant cook's matches.
+    matches = {m["title"]: m for m in taxonomy.transferable("35-2014", limit=12)}
     chef = next((m for t, m in matches.items() if "Chefs" in t), None)
     assert chef is not None and chef["requires_more_training"] is True
     assert any(not m["requires_more_training"] for m in matches.values())

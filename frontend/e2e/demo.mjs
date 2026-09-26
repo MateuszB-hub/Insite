@@ -66,6 +66,7 @@ await page.getByRole('button', { name: 'Register' }).click()
 await page.fill('#name', 'Demo')
 await page.fill('#email', EMAIL)
 await page.fill('#password', 'a demo passphrase here')
+await page.fill('#password-confirm', 'a demo passphrase here')
 await page.getByRole('checkbox').check()
 await page.getByRole('button', { name: 'Create Account' }).click()
 await page.waitForURL(u => !u.pathname.startsWith('/login'), { timeout: 20000 })
@@ -80,19 +81,43 @@ await page.screenshot({ path: `${OUT}/2-filled.png`, fullPage: true })
 
 const started = Date.now()
 await page.getByRole('button', { name: 'Map pathway' }).click()
-await page.screenshot({ path: `${OUT}/3-loading.png`, fullPage: true })
 
-await page.waitForSelector('text=What this means for you', { timeout: 240000 })
-const elapsed = ((Date.now() - started) / 1000).toFixed(1)
-await page.waitForTimeout(700)
-await page.screenshot({ path: `${OUT}/4-result.png`, fullPage: true })
+// Tester: the old ~22 s wait was "too slow, most people would just leave".
+// The facts come without waiting on a model at all.
+await page.waitForSelector('text=Roles open to you', { timeout: 60000 })
+const factsIn = (Date.now() - started) / 1000
+const earlyBadges = await page.locator('span', { hasText: /^(Ready now|Stretch|Longer term)$/ }).count()
+await page.waitForTimeout(500)
+await page.screenshot({ path: `${OUT}/3-facts.png`, fullPage: true })
 
-console.log(`generated in ${elapsed}s\n`)
+console.log(`facts in ${factsIn.toFixed(1)}s\n`)
 console.log('assertions:')
 
-// 1. narrative + attribution
-const summary = await page.locator('section', { hasText: 'What this means for you' }).first().innerText()
-check('narrative rendered', summary.length > 80, `${summary.length} chars`)
+check('facts and badges show without waiting for a model', factsIn < 10 && earlyBadges >= 3,
+      `${factsIn.toFixed(1)}s, ${earlyBadges} badges`)
+
+// Tester: "kind of useless tbh. Super generic information". The headline is
+// computed from the data, and every role says what it takes and where to learn.
+const glance = await page.locator('section', { hasText: 'At a glance' }).first().innerText()
+check('at-a-glance headline from the data', /Of \d+ next roles?:/.test(glance), glance.split('\n')[1] ?? '')
+const roleCards = page.locator('article', { has: page.locator('text=Training:') })
+const cardCount = await roleCards.count()
+const linked = await page.locator('article [data-testid="learning-links"]').count()
+check('every role links to where to learn', cardCount >= 3 && linked >= cardCount, `${linked} linked of ${cardCount}`)
+const roadmaps = await page.locator('a[href^="https://roadmap.sh/"]').count()
+check('tech roles link to roadmap.sh', roadmaps > 0, `${roadmaps} roadmap links`)
+const payChanges = await page.locator('[data-testid="pay-change"]').count()
+check('pay change vs the current role shown', payChanges > 0, `${payChanges} roles`)
+
+// 1. the AI summary is optional, labelled, and comes after the facts
+const askedAt = Date.now()
+await page.getByRole('button', { name: 'Write me a summary' }).click()
+await page.waitForSelector('h2:text-is("AI summary")', { timeout: 240000 })
+console.log(`  (summary written in ${((Date.now() - askedAt) / 1000).toFixed(1)}s)`)
+await page.waitForTimeout(500)
+await page.screenshot({ path: `${OUT}/4-result.png`, fullPage: true })
+const summary = await page.locator('section', { hasText: 'AI summary' }).first().innerText()
+check('summary rendered on request', summary.length > 80, `${summary.length} chars`)
 check('engine attributed', /Local model|Anthropic|Mock/.test(summary))
 
 // 2/3. readiness badges present and differentiated

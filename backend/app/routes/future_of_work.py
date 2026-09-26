@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth.deps import CurrentUser
 from app.services.providers import (
     ProviderError,
     ProviderUnavailable,
@@ -69,7 +70,7 @@ async def list_providers() -> ProvidersResponse:
 
 
 @router.post("/future-of-work", response_model=FutureOfWorkResponse)
-async def future_of_work(request: FutureOfWorkRequest) -> FutureOfWorkResponse:
+async def future_of_work(request: FutureOfWorkRequest, user: CurrentUser) -> FutureOfWorkResponse:
     """Search industry trends, then synthesize them into a report."""
     try:
         raw_findings = await search_industry_trends(
