@@ -63,7 +63,7 @@ def pathway(monkeypatch):
     """Patch every outside source; the neighbours arrive without zones."""
     cs.clear_pathway_cache()
 
-    async def resolve(source, role):
+    async def resolve(source, role, occupation_code=None):
         return (
             CURRENT,
             [Occupation(code=SAME.code, title=SAME.title),

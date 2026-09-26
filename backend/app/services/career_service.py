@@ -76,7 +76,7 @@ def clear_pathway_cache() -> None:
 
 
 def _pathway_key(current_role, industry, horizon_months, location,
-                 include_narrative, provider_name) -> tuple:
+                 include_narrative, provider_name, occupation_code=None) -> tuple:
     return (
         current_role.strip().lower(),
         (industry or "").strip().lower(),
@@ -84,6 +84,7 @@ def _pathway_key(current_role, industry, horizon_months, location,
         (location or "").strip().lower(),
         include_narrative,
         provider_name or "",
+        occupation_code or "",
     )
 
 #: Rough mapping from a horizon in months to how far a move can reasonably
@@ -160,15 +161,25 @@ def readiness(current: Occupation, target: Occupation, horizon_months: int) -> s
     return max(known, key=_SEVERITY.__getitem__) if known else None
 
 
-async def _resolve_occupations(source, current_role: str):
+async def _resolve_occupations(source, current_role: str, occupation_code: str | None = None):
     """Resolve the role and its neighbours, degrading to the offline map.
+
+    `occupation_code` is the person's own choice when the title was
+    ambiguous ("QA lead": software QA, not materials inspection); it wins
+    over any guess from the title.
 
     Returns (current, neighbours, source_actually_used) so `data_sources`
     reports what really answered, not what we hoped would.
     """
+    chosen = taxonomy.get(occupation_code) if occupation_code else None
     for attempt, candidate in enumerate((source, OnetFallback())):
         try:
-            current = await candidate.resolve(current_role)
+            if chosen is not None:
+                current = Occupation(code=chosen["soc"], title=chosen["title"],
+                                     description=chosen["description"],
+                                     job_zone=chosen.get("job_zone"))
+            else:
+                current = await candidate.resolve(current_role)
             if current is None:
                 current = Occupation(code="", title=current_role)
             neighbours = await candidate.related(current.code) if current.code else []
@@ -183,6 +194,30 @@ async def _resolve_occupations(source, current_role: str):
             logger.warning("offline occupation fallback also failed: %s", exc)
 
     return Occupation(code="", title=current_role), [], OnetFallback()
+
+
+def _title_choices(current_role: str, current: Occupation, *, chosen: bool) -> dict[str, Any]:
+    """Other occupations the typed title could mean, and whether to ask.
+
+    The pathway is built for the best match straight away; when the data
+    says the title is genuinely ambiguous, the page asks which one is meant
+    (mentor: "QA lead" can be software QA or checking parts as they arrive).
+    Once the person has picked, it doesn't ask again.
+    """
+    found = taxonomy.candidates(current_role, limit=6)
+    alternatives = [
+        {
+            "code": c["soc"], "title": c["title"], "description": c["description"],
+            "employment": c.get("employment"), "via": c.get("via"),
+        }
+        for c in found if c["soc"] != current.code
+    ][:4]
+    top = next((c for c in found if c["soc"] == current.code), None)
+    return {
+        "alternatives": alternatives,
+        "ambiguous": (not chosen) and taxonomy.is_ambiguous(found),
+        "matched_via": (f'{top["match"]}: "{top["via"]}"' if top and top.get("via") else None),
+    }
 
 
 async def _market_snapshot(market, current_role: str, current: Occupation, location):
@@ -229,6 +264,7 @@ async def build_career_pathway(
     location: str | None = None,
     include_narrative: bool = True,
     provider_name: str | None = None,
+    occupation_code: str | None = None,
 ) -> dict[str, Any]:
     """Assemble a pathway report from every source that is available.
 
@@ -236,7 +272,7 @@ async def build_career_pathway(
     last and is strictly optional -- a model failure still yields the facts.
     """
     key = _pathway_key(current_role, industry, horizon_months, location,
-                       include_narrative, provider_name)
+                       include_narrative, provider_name, occupation_code)
     cached = _cache_get(key)
     if cached is not None:
         logger.info("pathway cache hit for %r", current_role)
@@ -250,7 +286,7 @@ async def build_career_pathway(
     # credentials, an outage, a rate limit. None of those should take the whole
     # report down, so fall back rather than 502.
     current, neighbours, occupations = await _resolve_occupations(
-        occupations, current_role
+        occupations, current_role, occupation_code
     )
 
     current = _with_job_zone(current)
@@ -326,6 +362,7 @@ async def build_career_pathway(
         "transferable": transferable,
         "hiring": _market_dict(snapshot),
         "data_sources": _status_with(occupations),
+        **_title_choices(current_role, current, chosen=bool(occupation_code)),
         "narrative": None,
         "narrative_status": "not requested",
     }
@@ -344,6 +381,7 @@ async def narrate_career_pathway(
     horizon_months: int = 12,
     location: str | None = None,
     provider_name: str | None = None,
+    occupation_code: str | None = None,
 ) -> dict[str, Any]:
     """The model-written layer, requested after the facts are on screen.
 
@@ -352,7 +390,7 @@ async def narrate_career_pathway(
     narrated report shares its cache entry with include_narrative=True.
     """
     key = _pathway_key(current_role, industry, horizon_months, location,
-                       True, provider_name)
+                       True, provider_name, occupation_code)
     cached = _cache_get(key)
     if cached is not None:
         return cached
@@ -363,6 +401,7 @@ async def narrate_career_pathway(
         horizon_months=horizon_months,
         location=location,
         include_narrative=False,
+        occupation_code=occupation_code,
     )
     report = await attach_narrative(copy.deepcopy(facts), provider_name=provider_name)
     # A failed model call is worth retrying, so only a finished summary is kept.
