@@ -20,12 +20,14 @@ the filters operate on those classifications rather than on the raw numbers.
 A filter that cannot be honest returns fewer results rather than wrong ones.
 """
 
+import asyncio
 import hashlib
 import logging
 import os
 import re
 from dataclasses import dataclass, field
 from enum import Enum
+from itertools import chain, zip_longest
 from typing import Any
 
 import httpx
@@ -166,6 +168,9 @@ class SearchResult:
     excluded_below_salary: int = 0
     #: Adverts folded into another entry because the text was identical.
     collapsed_duplicates: int = 0
+    #: Places searched, and any whose lookup failed (the rest still return).
+    locations_searched: list[str] = field(default_factory=list)
+    failed_locations: list[str] = field(default_factory=list)
 
 
 def classify_salary(raw: dict[str, Any]) -> SalarySource:
@@ -304,9 +309,35 @@ def _collapse_duplicates(postings: list[JobPosting]) -> tuple[list[JobPosting], 
     return list(seen.values()), collapsed
 
 
+#: Adzuna takes one place per query, so several places cost one request each.
+MAX_LOCATIONS = 3
+
+
+def normalize_locations(locations: str | list[str] | None) -> list[str]:
+    """Trim, drop blanks and case-insensitive repeats, cap at MAX_LOCATIONS."""
+    if locations is None:
+        return []
+    if isinstance(locations, str):
+        locations = [locations]
+    seen: set[str] = set()
+    out: list[str] = []
+    for place in locations:
+        place = place.strip()
+        if place and place.lower() not in seen:
+            seen.add(place.lower())
+            out.append(place)
+    return out[:MAX_LOCATIONS]
+
+
+def _interleave(pages: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Round-robin across places so the first city cannot crowd out the rest
+    when the result limit is reached."""
+    return [raw for raw in chain.from_iterable(zip_longest(*pages)) if raw is not None]
+
+
 async def search_jobs(
     query: str,
-    location: str | None = None,
+    locations: str | list[str] | None = None,
     *,
     salary_min: float | None = None,
     require_stated_salary: bool = False,
@@ -327,23 +358,46 @@ async def search_jobs(
     if not (app_id and app_key):
         raise RuntimeError("ADZUNA_APP_ID / ADZUNA_APP_KEY not set")
 
-    params: dict[str, Any] = {
+    base: dict[str, Any] = {
         "app_id": app_id, "app_key": app_key,
         "what": query,
         # Ask for more than we need: honest filtering discards a lot.
         "results_per_page": min(50, max(limit * 2, 20)),
     }
-    if location:
-        params["where"] = location
+    places = normalize_locations(locations)
 
-    async with httpx.AsyncClient(timeout=40.0) as client:
+    async def fetch(client: httpx.AsyncClient, place: str | None) -> dict[str, Any]:
+        params = dict(base)
+        if place:
+            params["where"] = place
         response = await client.get(f"{BASE_URL}/jobs/{COUNTRY}/search/1", params=params)
         response.raise_for_status()
-        payload = response.json()
+        return response.json()
 
-    result = SearchResult(total_available=payload.get("count"))
+    async with httpx.AsyncClient(timeout=40.0) as client:
+        if places:
+            outcomes = await asyncio.gather(
+                *(fetch(client, place) for place in places), return_exceptions=True)
+        else:
+            outcomes = [await fetch(client, None)]
 
-    candidates = [to_posting(raw) for raw in payload.get("results", [])]
+    payloads: list[dict[str, Any]] = []
+    result = SearchResult(locations_searched=places)
+    for place, outcome in zip(places or [None], outcomes):
+        if isinstance(outcome, BaseException):
+            # One bad place should not sink the others; say which one failed.
+            logger.warning("job search failed for one location: %s", type(outcome).__name__)
+            result.failed_locations.append(place or "")
+            continue
+        payloads.append(outcome)
+    if not payloads:
+        failure = next(o for o in outcomes if isinstance(o, BaseException))
+        raise failure
+
+    counts = [p.get("count") for p in payloads if p.get("count") is not None]
+    result.total_available = sum(counts) if counts else None
+
+    candidates = [to_posting(raw) for raw in _interleave([p.get("results", []) for p in payloads])]
 
     if collapse_duplicates:
         candidates, result.collapsed_duplicates = _collapse_duplicates(candidates)

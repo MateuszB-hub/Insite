@@ -450,11 +450,16 @@ export interface JobSearchResponse {
   excluded_not_remote: number
   excluded_below_salary: number
   collapsed_duplicates: number
+  locations_searched: string[]
+  failed_locations: string[]
 }
+
+/** Adzuna takes one place per query; the backend runs up to this many. */
+export const MAX_JOB_LOCATIONS = 3
 
 export async function searchJobs(params: {
   q: string
-  where?: string
+  where?: string[]
   salaryMin?: number
   requireStatedSalary?: boolean
   remoteOnly?: boolean
@@ -462,7 +467,7 @@ export async function searchJobs(params: {
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
   const qs = new URLSearchParams({ q: params.q })
-  if (params.where) qs.set('where', params.where)
+  for (const place of params.where ?? []) qs.append('where', place)
   if (params.salaryMin) qs.set('salary_min', String(params.salaryMin))
   if (params.requireStatedSalary) qs.set('require_stated_salary', 'true')
   if (params.remoteOnly) qs.set('remote_only', 'true')

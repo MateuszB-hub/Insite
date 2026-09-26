@@ -61,8 +61,18 @@ check('profile saves', true)
 await page.goto(`${BASE}/jobs`, { waitUntil: 'networkidle' })
 await page.waitForSelector('#q', { state: 'visible', timeout: 15000 })
 await page.fill('#q', 'registered nurse')
+// several places: each becomes a removable tag, all searched at once
+for (const place of ['Austin', 'Denver']) {
+  await page.fill('#where', place)
+  await page.press('#where', 'Enter')
+}
+const tags = await page.getByLabel('Selected locations').innerText()
+check('places become tags', tags.includes('Austin') && tags.includes('Denver'), tags.replace(/\s+/g, ' '))
 await page.getByRole('button', { name: 'Search' }).click()
 await page.waitForSelector('article', { timeout: 60000 })
+const cities = (await page.locator('article').allInnerTexts()).join(' ')
+check('results cover every place', /Austin|Travis/.test(cities) && /Denver/.test(cities))
+await page.screenshot({ path: `${OUT}/0-two-cities.png`, fullPage: false })
 const title = await page.locator('article h2').first().innerText()
 await page.locator('button:has-text("Mark as applied")').first().click()
 await page.waitForSelector('text=Already applied', { timeout: 20000 })

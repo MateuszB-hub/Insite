@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Search, Loader2, MapPin, Building2, ExternalLink,
-  TriangleAlert, BadgeCheck, CircleHelp, Info, Copy, History, CheckCircle2, Plus,
+  TriangleAlert, BadgeCheck, CircleHelp, Info, Copy, History, CheckCircle2, Plus, X,
 } from 'lucide-react'
 import {
+  MAX_JOB_LOCATIONS,
   fetchTrackedFingerprints,
   searchJobs,
   trackJob,
@@ -50,7 +51,10 @@ function SalaryLine({ job }: { job: JobPosting }) {
 
 export default function JobSearch() {
   const [q, setQ] = useState('')
-  const [where, setWhere] = useState('')
+  //: Places are tags, not free text: a comma is part of "Austin, TX", so it
+  //: cannot separate cities.
+  const [places, setPlaces] = useState<string[]>([])
+  const [placeDraft, setPlaceDraft] = useState('')
   const [salaryMin, setSalaryMin] = useState('')
   const [requireStated, setRequireStated] = useState(false)
   const [remoteOnly, setRemoteOnly] = useState(false)
@@ -90,15 +94,30 @@ export default function JobSearch() {
     }
   }
 
+  const withPlace = (list: string[], place: string) => {
+    const p = place.trim()
+    if (!p || list.length >= MAX_JOB_LOCATIONS) return list
+    return list.some((x) => x.toLowerCase() === p.toLowerCase()) ? list : [...list, p]
+  }
+
+  const addPlace = () => {
+    setPlaces((prev) => withPlace(prev, placeDraft))
+    setPlaceDraft('')
+  }
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!q.trim() || loading) return
+    // Text still in the box counts, so nobody has to press Enter first.
+    const where = withPlace(places, placeDraft)
+    setPlaces(where)
+    setPlaceDraft('')
     setLoading(true)
     setError(null)
     try {
       setData(await searchJobs({
         q: q.trim(),
-        where: where.trim() || undefined,
+        where,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         requireStatedSalary: requireStated,
         remoteOnly,
@@ -140,10 +159,44 @@ export default function JobSearch() {
           </div>
           <div className="flex-1">
             <label htmlFor="where" className="block text-sm font-medium text-slate-700 mb-1">
-              Location <span className="text-slate-400 font-normal">(optional)</span>
+              Locations{' '}
+              <span className="text-slate-400 font-normal">
+                (optional, up to {MAX_JOB_LOCATIONS})
+              </span>
             </label>
-            <input id="where" value={where} onChange={(e) => setWhere(e.target.value)}
-              placeholder="e.g. Austin" className={field} />
+            <input id="where" value={placeDraft}
+              onChange={(e) => setPlaceDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter adds the place as a tag instead of submitting the search.
+                if (e.key === 'Enter' && placeDraft.trim()) {
+                  e.preventDefault()
+                  addPlace()
+                } else if (e.key === 'Backspace' && !placeDraft && places.length) {
+                  setPlaces((prev) => prev.slice(0, -1))
+                }
+              }}
+              disabled={places.length >= MAX_JOB_LOCATIONS}
+              placeholder={
+                places.length >= MAX_JOB_LOCATIONS
+                  ? `Up to ${MAX_JOB_LOCATIONS} places`
+                  : places.length ? 'Add another, press Enter' : 'e.g. Austin, then Enter'
+              }
+              className={`${field} disabled:bg-slate-50`} />
+            {places.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2" aria-label="Selected locations">
+                {places.map((place) => (
+                  <span key={place}
+                    className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-sm rounded-full pl-3 pr-1.5 py-0.5">
+                    {place}
+                    <button type="button" aria-label={`Remove ${place}`}
+                      onClick={() => setPlaces((prev) => prev.filter((p) => p !== place))}
+                      className="rounded-full p-0.5 hover:bg-indigo-100">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="w-full sm:w-40">
             <label htmlFor="sal" className="block text-sm font-medium text-slate-700 mb-1">
@@ -192,6 +245,16 @@ export default function JobSearch() {
 
       {data && (
         <>
+          {data.failed_locations.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+              <p className="text-sm text-amber-800 flex items-center gap-1.5">
+                <TriangleAlert className="w-4 h-4" />
+                Couldn't search {data.failed_locations.join(', ')} just now. Showing results
+                for the other{data.locations_searched.length - data.failed_locations.length === 1 ? '' : 's'}.
+              </p>
+            </div>
+          )}
+
           {/* Explain a short list rather than letting it look broken. */}
           {folded > 0 && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">

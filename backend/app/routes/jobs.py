@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.auth.deps import CurrentUser
-from app.services.job_search import search_jobs
+from app.services.job_search import MAX_LOCATIONS, normalize_locations, search_jobs
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -49,13 +49,17 @@ class JobSearchResponse(BaseModel):
     excluded_below_salary: int = 0
     #: Adverts folded into another row because the text was identical.
     collapsed_duplicates: int = 0
+    locations_searched: list[str] = []
+    #: Places whose lookup failed; results for the others are still shown.
+    failed_locations: list[str] = []
 
 
 @router.get("/jobs/search", response_model=JobSearchResponse)
 async def job_search(
     user: CurrentUser,
     q: str = Query(..., min_length=1, max_length=200),
-    where: str | None = Query(None, max_length=120),
+    # Repeat the parameter for several places: ?where=Austin&where=Denver
+    where: list[str] = Query([]),
     salary_min: float | None = Query(None, ge=0, le=10_000_000),
     require_stated_salary: bool = Query(False),
     remote_only: bool = Query(False),
@@ -68,9 +72,15 @@ async def job_search(
     means what the user thinks it means. Remote claims are judged against the
     location the posting actually names.
     """
+    if any(len(place) > 120 for place in where):
+        raise HTTPException(422, "Each location must be 120 characters or fewer.")
+    if len({p.strip().lower() for p in where if p.strip()}) > MAX_LOCATIONS:
+        raise HTTPException(422, f"Search up to {MAX_LOCATIONS} locations at a time.")
+    places = normalize_locations(where)
+
     try:
         result = await search_jobs(
-            q, where,
+            q, places,
             salary_min=salary_min,
             require_stated_salary=require_stated_salary,
             remote_only=remote_only,
@@ -91,4 +101,6 @@ async def job_search(
         excluded_not_remote=result.excluded_not_remote,
         excluded_below_salary=result.excluded_below_salary,
         collapsed_duplicates=result.collapsed_duplicates,
+        locations_searched=result.locations_searched,
+        failed_locations=result.failed_locations,
     )
