@@ -36,3 +36,7 @@ playwright-report/
 .DS_Store
 .vscode/
 .idea/
+
+# Private working notes (handover state, plans); the README is the public doc
+TODO.md
+PLAN-*.md
