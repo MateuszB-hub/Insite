@@ -204,6 +204,22 @@ export interface CareerPathwayResult {
   /** Null when the model was unavailable; the facts above remain valid. */
   narrative?: NarrativeInfo | null
   narrative_status: string
+  /** Other occupations the typed title could mean, best first. */
+  alternatives?: OccupationChoice[]
+  /** The title could mean several jobs and none was picked: ask. */
+  ambiguous?: boolean
+  /** How the title was matched, e.g. 'similar title: "Quality Assurance Analyst"'. */
+  matched_via?: string | null
+}
+
+export interface OccupationChoice {
+  code: string
+  title: string
+  description?: string
+  /** People employed nationally (BLS). */
+  employment?: number | null
+  /** The O*NET title that matched. */
+  via?: string | null
 }
 
 export interface CareerPathwayParams {
@@ -212,6 +228,8 @@ export interface CareerPathwayParams {
   horizonMonths?: number
   location?: string
   includeNarrative?: boolean
+  /** The occupation picked when the title was ambiguous (SOC code). */
+  occupationCode?: string
   signal?: AbortSignal
 }
 
@@ -227,6 +245,7 @@ async function postPathway(path: string, params: CareerPathwayParams): Promise<C
       horizon_months: params.horizonMonths ?? 12,
       location: params.location || undefined,
       include_narrative: params.includeNarrative ?? true,
+      occupation_code: params.occupationCode || undefined,
     }),
   })
   if (!res.ok) throw new Error(await readError(res))
