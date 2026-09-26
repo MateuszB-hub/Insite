@@ -118,6 +118,18 @@ export interface OccupationInfo {
   rationale?: string | null
   readiness?: Readiness | null
   steps: string[]
+  /** Target minus current BLS median. */
+  pay_change?: number | null
+  /** O*NET Job Zone in plain words. */
+  training?: string | null
+  skill_gaps?: SkillGap[]
+  links?: LearningLink[]
+}
+
+export interface LearningLink {
+  label: string
+  url: string
+  source: string
 }
 
 export interface NarrativeInfo {
@@ -176,6 +188,8 @@ export interface TransferableRole {
   job_zone?: number | null
   skill_gaps: SkillGap[]
   wage?: WageInfo | null
+  training?: string | null
+  links?: LearningLink[]
 }
 
 export interface CareerPathwayResult {

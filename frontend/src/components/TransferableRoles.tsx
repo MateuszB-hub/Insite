@@ -1,5 +1,6 @@
 import { ArrowUpRight } from 'lucide-react'
 import type { TransferableRole } from '../lib/api'
+import MoveFacts from './MoveFacts'
 import ReadinessBadge from './ReadinessBadge'
 
 /** Sign goes outside the currency symbol: -$17,200, not $-17,200. */
@@ -79,12 +80,7 @@ export default function TransferableRoles({
                 <ReadinessBadge readiness={role.readiness} />
               </div>
 
-              {role.skill_gaps.length > 0 && (
-                <p className="text-xs text-slate-500 mt-2">
-                  Worth strengthening:{' '}
-                  {role.skill_gaps.map((g) => g.skill).join(', ')}
-                </p>
-              )}
+              <MoveFacts training={role.training} gaps={role.skill_gaps} links={role.links} />
             </article>
           )
         })}

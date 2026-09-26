@@ -10,7 +10,6 @@ import {
   ExternalLink,
   ArrowRight,
   Cpu,
-  Target,
   TriangleAlert,
 } from 'lucide-react'
 import {
@@ -21,6 +20,7 @@ import {
   type OccupationInfo,
 } from '../lib/api'
 import { markPathwayExplored } from '../lib/progress'
+import MoveFacts from './MoveFacts'
 import ReadinessBadge from './ReadinessBadge'
 import SourceAttribution from './SourceAttribution'
 import TransferableRoles from './TransferableRoles'
@@ -50,11 +50,13 @@ export default function CareerPathway() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CareerPathwayResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  //: The facts arrive in a few seconds; the model's summary follows.
+  //: The facts arrive in a few seconds. The model's summary is optional and
+  //: slow, so it is asked for, not waited on (testers found it generic).
   const [narrating, setNarrating] = useState(false)
   const [narrativeError, setNarrativeError] = useState<string | null>(null)
-  //: A summary that lands after a newer search started must not replace it.
+  //: A response that lands after a newer search started must not replace it.
   const requestId = useRef(0)
+  const lastParams = useRef<{ currentRole: string; industry: string; horizonMonths: number } | null>(null)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -65,6 +67,7 @@ export default function CareerPathway() {
       industry: industry.trim(),
       horizonMonths: horizon,
     }
+    lastParams.current = params
     setLoading(true)
     setError(null)
     setResult(null)
@@ -79,12 +82,17 @@ export default function CareerPathway() {
       if (id === requestId.current) {
         setError(err instanceof Error ? err.message : 'Unexpected error')
       }
-      return
     } finally {
       if (id === requestId.current) setLoading(false)
     }
+  }
 
+  const requestSummary = async () => {
+    const params = lastParams.current
+    if (!params || narrating) return
+    const id = requestId.current
     setNarrating(true)
+    setNarrativeError(null)
     try {
       const narrated = await fetchPathwayNarrative(params)
       if (id !== requestId.current) return
@@ -181,56 +189,7 @@ export default function CareerPathway() {
         <div className="space-y-6">
           <SourceBanner sources={result.data_sources} />
 
-          {result.narrative ? (
-            <section className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 p-6">
-              <div className="flex items-start justify-between gap-4 mb-2">
-                <h2 className="text-lg font-semibold text-indigo-900">What this means for you</h2>
-                <span className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-700 bg-white/70 border border-indigo-200 px-2 py-1 rounded-full">
-                  <Cpu className="w-3 h-3" />
-                  {result.narrative.provider_label}
-                </span>
-              </div>
-              <p className="text-slate-700 leading-relaxed">{result.narrative.summary}</p>
-
-              {result.narrative.skill_gaps.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-indigo-900 mb-2 flex items-center gap-1.5">
-                    <Target className="w-4 h-4" /> Skills to build
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {result.narrative.skill_gaps.map((s) => (
-                      <span key={s} className="bg-white/80 border border-indigo-200 text-indigo-800 px-3 py-1 rounded-full text-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {result.narrative.risks.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-indigo-900 mb-1.5 flex items-center gap-1.5">
-                    <TriangleAlert className="w-4 h-4" /> Worth weighing
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1">
-                    {result.narrative.risks.map((r) => (
-                      <li key={r} className="text-sm text-slate-700">{r}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </section>
-          ) : narrating ? (
-            <p className="text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center gap-2"
-              data-testid="narrative-pending">
-              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-              Writing a summary of what this means for you. Everything below is ready now.
-            </p>
-          ) : (
-            <p className="text-sm text-slate-500 bg-white border border-slate-200 rounded-xl p-4">
-              Summary unavailable{narrativeError ? ` (${narrativeError})` : ''}. The data below is unaffected.
-            </p>
-          )}
+          <AtAGlance result={result} />
 
           {/* Starting point */}
           <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -275,27 +234,15 @@ export default function CareerPathway() {
                         </h3>
                         <ReadinessBadge readiness={p.readiness} />
                       </div>
-                      {p.rationale && (
-                        <p className="text-sm text-slate-600 mt-1.5">{p.rationale}</p>
-                      )}
-                      {!p.rationale && p.description && (
+                      {p.description && (
                         <p className="text-sm text-slate-600 mt-1">{p.description}</p>
                       )}
-                      {p.steps.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {p.steps.map((s) => (
-                            <li key={s} className="text-sm text-slate-600 flex gap-2">
-                              <span className="text-indigo-400 mt-0.5">·</span>
-                              <span>{s}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
                       {p.wage ? (
-                        <WageLine wage={p.wage} />
+                        <WageLine wage={p.wage} change={p.pay_change} />
                       ) : (
                         <p className="text-xs text-slate-400 mt-2">Wage data not configured</p>
                       )}
+                      <MoveFacts training={p.training} gaps={p.skill_gaps} links={p.links} />
                     </div>
                   </article>
                 ))}
@@ -306,6 +253,13 @@ export default function CareerPathway() {
           <TransferableRoles
             roles={result.transferable}
             currentPay={result.current_occupation.wage?.annual_median}
+          />
+
+          <SummaryPanel
+            result={result}
+            narrating={narrating}
+            error={narrativeError}
+            onRequest={requestSummary}
           />
 
           {/* Hiring market */}
@@ -319,18 +273,158 @@ export default function CareerPathway() {
   )
 }
 
-function WageLine({ wage }: { wage: NonNullable<OccupationInfo['wage']> }) {
+function WageLine({ wage, change }: {
+  wage: NonNullable<OccupationInfo['wage']>
+  change?: number | null
+}) {
   const median = money(wage.annual_median)
   const mean = money(wage.annual_mean)
   if (!median && !mean) return null
   return (
     <p className="text-sm text-slate-700 mt-2">
       {median && <span className="font-semibold">{median} median</span>}
+      {change != null && <PayChange change={change} />}
       {median && mean && <span className="text-slate-400"> · </span>}
       {mean && <span>{mean} mean</span>}
       {wage.year && <span className="text-slate-400"> · {wage.year}</span>}
       {wage.source && <span className="text-slate-400"> · {wage.source}</span>}
     </p>
+  )
+}
+
+/** Sign outside the currency symbol: -$17,200, not $-17,200. */
+const signedMoney = (n: number) =>
+  `${n < 0 ? '-' : '+'}$${Math.abs(Math.round(n)).toLocaleString()}`
+
+function PayChange({ change }: { change: number }) {
+  return (
+    <span data-testid="pay-change"
+      className={`ml-2 text-xs font-medium ${change > 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
+      {signedMoney(change)} vs now
+    </span>
+  )
+}
+
+const READINESS_WORD = { ready: 'within reach now', stretch: 'a stretch', 'long-term': 'longer term' } as const
+
+/**
+ * The headline, computed from the facts below it -- never model-written, so
+ * it cannot disagree with them.
+ */
+function AtAGlance({ result }: { result: CareerPathwayResult }) {
+  const roles = result.pathways
+  if (roles.length === 0) return null
+  const count = (r: keyof typeof READINESS_WORD) => roles.filter((p) => p.readiness === r).length
+  const parts = (Object.keys(READINESS_WORD) as (keyof typeof READINESS_WORD)[])
+    .filter((r) => count(r) > 0)
+    .map((r) => `${count(r)} ${READINESS_WORD[r]}`)
+  const byPay = roles
+    .filter((p) => p.pay_change != null && p.pay_change > 0)
+    .sort((a, b) => (b.pay_change ?? 0) - (a.pay_change ?? 0))
+  const top = byPay[0]
+  const readyBest = byPay.find((p) => p.readiness === 'ready')
+  // The skills panel can hold the better pay step, so the headline looks there too.
+  const currentPay = result.current_occupation.wage?.annual_median
+  const sideways = result.transferable
+    .map((t) => ({ t, change: currentPay != null && t.wage?.annual_median != null ? t.wage.annual_median - currentPay : null }))
+    .filter((x): x is { t: typeof x.t; change: number } => x.change != null && x.change > 0)
+    .sort((a, b) => b.change - a.change)[0]
+
+  return (
+    <section aria-labelledby="at-a-glance"
+      className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 p-6">
+      <h2 id="at-a-glance" className="text-lg font-semibold text-indigo-900 mb-2">At a glance</h2>
+      <ul className="space-y-1.5 text-slate-700">
+        {parts.length > 0 && (
+          <li>
+            Of {roles.length} next {roles.length === 1 ? 'role' : 'roles'}: {parts.join(', ')}.
+          </li>
+        )}
+        {top ? (
+          <li>
+            Biggest pay step: <span className="font-medium">{top.title}</span>,{' '}
+            <span className="text-emerald-700 font-medium">{signedMoney(top.pay_change!)}</span> a year at
+            the national median
+            {top.readiness ? ` (${READINESS_WORD[top.readiness]}` : ''}
+            {top.readiness && top.training ? `; ${top.training.charAt(0).toLowerCase()}${top.training.slice(1)})` : top.readiness ? ')' : ''}.
+          </li>
+        ) : (
+          roles.some((p) => p.pay_change != null) && (
+            <li>None of these pays more than your current role at the national median.</li>
+          )
+        )}
+        {readyBest && readyBest !== top && (
+          <li>
+            Best-paid move within reach now: <span className="font-medium">{readyBest.title}</span>,{' '}
+            <span className="text-emerald-700 font-medium">{signedMoney(readyBest.pay_change!)}</span>.
+          </li>
+        )}
+        {sideways && (!top || sideways.change > top.pay_change!) && (
+          <li>
+            Where your skills also apply, the best pay step is{' '}
+            <span className="font-medium">{sideways.t.title}</span>,{' '}
+            <span className="text-emerald-700 font-medium">{signedMoney(sideways.change)}</span>
+            {sideways.t.readiness ? ` (${READINESS_WORD[sideways.t.readiness]})` : ''}.
+          </li>
+        )}
+      </ul>
+      <p className="text-xs text-slate-500 mt-3">
+        From O*NET and BLS data. Each role below links to what it involves and where to train.
+      </p>
+    </section>
+  )
+}
+
+/** The model's take, only when asked for -- labelled, and after the facts. */
+function SummaryPanel({ result, narrating, error, onRequest }: {
+  result: CareerPathwayResult
+  narrating: boolean
+  error: string | null
+  onRequest: () => void
+}) {
+  const n = result.narrative
+  if (n) {
+    return (
+      <section className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between gap-4 mb-2">
+          <h2 className="text-lg font-semibold text-slate-900">AI summary</h2>
+          <span className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-full">
+            <Cpu className="w-3 h-3" />
+            {n.provider_label}
+          </span>
+        </div>
+        <p className="text-slate-700 leading-relaxed">{n.summary}</p>
+        {n.risks.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-slate-900 mb-1.5 flex items-center gap-1.5">
+              <TriangleAlert className="w-4 h-4" /> Worth weighing
+            </h3>
+            <ul className="list-disc list-inside space-y-1">
+              {n.risks.map((r) => (
+                <li key={r} className="text-sm text-slate-700">{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="text-xs text-slate-400 mt-3">Written by a model from the facts above; the facts win where they differ.</p>
+      </section>
+    )
+  }
+  return (
+    <section className="bg-white rounded-xl border border-dashed border-slate-300 p-5 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-slate-600">
+        {narrating
+          ? 'Writing a summary from the facts above. This takes about half a minute.'
+          : error
+            ? `Summary unavailable (${error}). The facts above are unaffected.`
+            : 'Want it in words? An AI model can summarise these facts. It takes about half a minute.'}
+      </p>
+      <button type="button" onClick={onRequest} disabled={narrating}
+        className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60">
+        {narrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
+        {narrating ? 'Writing…' : error ? 'Try again' : 'Write me a summary'}
+      </button>
+    </section>
   )
 }
 
