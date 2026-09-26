@@ -1,0 +1,11 @@
+{
+  "name": "insite",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Insite - HR applicant portal with an AI-driven Future of Work backend",
+  "scripts": {
+    "dev": "./dev.sh",
+    "build": "cd frontend && npm run build",
+    "typecheck": "cd frontend && npm run typecheck"
+  }
+}

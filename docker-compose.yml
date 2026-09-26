@@ -1,0 +1,29 @@
+# Local Postgres for Insite.
+#   docker compose up -d      start
+#   docker compose down       stop (data survives)
+#   docker compose down -v    stop and DESTROY data
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: insite-db
+    restart: unless-stopped
+    environment:
+      # Values come from the root .env (gitignored), which compose reads
+      # automatically. The "?err" syntax makes compose fail loudly rather
+      # than silently starting a database with a blank or default password.
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    ports:
+      # 5433 on the host: avoids colliding with any local Postgres on 5432.
+      - "5433:5432"
+    volumes:
+      - insite_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  insite_pgdata:

@@ -1,0 +1,27 @@
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+pydantic>=2.10.0
+
+# HTTP client -- Ollama provider, labour-market sources, OIDC discovery
+httpx>=0.28.0
+
+# Persistence
+sqlalchemy>=2.0.36
+alembic>=1.14.0
+psycopg[binary]>=3.2.0
+
+# Auth
+argon2-cffi>=23.1.0        # Argon2id password hashing
+itsdangerous>=2.2.0        # signed session cookies
+authlib>=1.4.0             # OIDC / OAuth2 client
+email-validator>=2.2.0     # pydantic EmailStr
+
+# AI providers
+anthropic>=0.40.0
+
+# Search
+ddgs>=9.0.0
+
+# Config
+python-dotenv>=1.1.0
