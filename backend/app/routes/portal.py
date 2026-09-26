@@ -1,4 +1,4 @@
-"""Applicant portal: profile, positions, applications, and staff review.
+"""Candidate portal: profile and self-tracked applications to external postings.
 
 Authorisation rules enforced here (never in the client):
 
