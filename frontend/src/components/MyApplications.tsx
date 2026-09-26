@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronDown, ExternalLink, FileText, Loader2, Search, Trash2, Undo2 } from 'lucide-react'
 import {
   fetchMyApplications,
@@ -73,7 +73,12 @@ export default function MyApplications() {
   const [apps, setApps] = useState<Application[]>([])
   const [total, setTotal] = useState(0)
   const [counts, setCounts] = useState<Record<ApplicationGroup, number> | null>(null)
-  const [group, setGroup] = useState<ApplicationGroup>('all')
+  //: Home's count tiles link here as ?group=interviewing etc.
+  const [params] = useSearchParams()
+  const [group, setGroup] = useState<ApplicationGroup>(() => {
+    const wanted = params.get('group')
+    return TABS.find((t) => t.key === wanted)?.key ?? 'all'
+  })
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'updated' | 'added'>('updated')

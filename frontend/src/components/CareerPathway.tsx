@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import {
   Route,
@@ -19,6 +20,7 @@ import {
   type OccupationInfo,
   type Readiness,
 } from '../lib/api'
+import { markPathwayExplored } from '../lib/progress'
 import SourceAttribution from './SourceAttribution'
 import TransferableRoles from './TransferableRoles'
 
@@ -44,8 +46,11 @@ const money = (n?: number | null) =>
  * section backed by a fallback is labelled rather than quietly presented.
  */
 export default function CareerPathway() {
-  const [role, setRole] = useState('')
-  const [industry, setIndustry] = useState('')
+  //: Home links here with ?role= (and ?industry=) from the profile. It fills
+  //: the form but does not run it: a full pathway still takes a while.
+  const [params] = useSearchParams()
+  const [role, setRole] = useState(() => params.get('role') ?? '')
+  const [industry, setIndustry] = useState(() => params.get('industry') ?? '')
   const [horizon, setHorizon] = useState(12)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CareerPathwayResult | null>(null)
@@ -65,6 +70,7 @@ export default function CareerPathway() {
           horizonMonths: horizon,
         }),
       )
+      markPathwayExplored()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error')
     } finally {

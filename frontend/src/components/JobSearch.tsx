@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import {
   Search, Loader2, MapPin, Building2, ExternalLink,
-  TriangleAlert, BadgeCheck, CircleHelp, Info, Copy, History, CheckCircle2, Plus, X, Clock,
+  TriangleAlert, Info, Copy, History, CheckCircle2, Plus, X,
 } from 'lucide-react'
 import {
   MAX_JOB_LOCATIONS,
@@ -12,56 +13,7 @@ import {
   type JobPosting,
   type JobSearchResponse,
 } from '../lib/api'
-
-const money = (n?: number | null) =>
-  n == null ? null : `$${Math.round(n).toLocaleString()}`
-
-/** Salary provenance, stated plainly rather than buried. */
-function SalaryLine({ job }: { job: JobPosting }) {
-  const range =
-    job.salary_min && job.salary_max && job.salary_min !== job.salary_max
-      ? `${money(job.salary_min)}–${money(job.salary_max)}`
-      : money(job.salary_min ?? job.salary_max)
-
-  if (job.salary_source === 'absent' || !range) {
-    return (
-      <span className="inline-flex items-center gap-1 text-sm text-slate-400">
-        <CircleHelp className="w-3.5 h-3.5" /> No salary stated
-      </span>
-    )
-  }
-  if (job.salary_source === 'estimated') {
-    return (
-      <span
-        className="inline-flex items-center gap-1 text-sm text-amber-700"
-        title="This figure was estimated by the job board, not published by the employer."
-      >
-        <TriangleAlert className="w-3.5 h-3.5" />
-        {range} <span className="text-xs">(estimated, not from employer)</span>
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
-      <BadgeCheck className="w-3.5 h-3.5" />
-      {range} <span className="text-xs font-normal">(employer stated)</span>
-    </span>
-  )
-}
-
-/** How old the advert says it is. Past a week it is often already filled. */
-function PostedAgo({ created }: { created?: string | null }) {
-  if (!created) return null
-  const days = Math.floor((Date.now() - new Date(created).getTime()) / 86_400_000)
-  if (Number.isNaN(days) || days < 0) return null
-  const label = days === 0 ? 'Posted today' : days === 1 ? 'Posted yesterday' : `Posted ${days} days ago`
-  return (
-    <span className={`inline-flex items-center gap-1 ${days > 7 ? 'text-amber-700' : ''}`}
-      title={days > 7 ? 'Older adverts are often already filled.' : undefined}>
-      <Clock className="w-3.5 h-3.5" /> {label}
-    </span>
-  )
-}
+import { PostedAgo, SalaryLine } from './JobBits'
 
 const AGE_CHOICES = [
   { value: '7', label: 'Past 7 days' },
@@ -71,10 +23,13 @@ const AGE_CHOICES = [
 ]
 
 export default function JobSearch() {
-  const [q, setQ] = useState('')
+  //: Home links here as /jobs?q=...&where=..., and the search runs on arrival.
+  const [params] = useSearchParams()
+  const [q, setQ] = useState(() => params.get('q') ?? '')
   //: Places are tags, not free text: a comma is part of "Austin, TX", so it
   //: cannot separate cities.
-  const [places, setPlaces] = useState<string[]>([])
+  const [places, setPlaces] = useState<string[]>(
+    () => params.getAll('where').filter(Boolean).slice(0, MAX_JOB_LOCATIONS))
   const [placeDraft, setPlaceDraft] = useState('')
   const [salaryMin, setSalaryMin] = useState('')
   //: Default a week: testers found older adverts are usually already filled.
@@ -128,18 +83,12 @@ export default function JobSearch() {
     setPlaceDraft('')
   }
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!q.trim() || loading) return
-    // Text still in the box counts, so nobody has to press Enter first.
-    const where = withPlace(places, placeDraft)
-    setPlaces(where)
-    setPlaceDraft('')
+  const runSearch = async (query: string, where: string[]) => {
     setLoading(true)
     setError(null)
     try {
       setData(await searchJobs({
-        q: q.trim(),
+        q: query,
         where,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         maxDaysOld: maxDaysOld ? Number(maxDaysOld) : undefined,
@@ -153,6 +102,25 @@ export default function JobSearch() {
       setLoading(false)
     }
   }
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!q.trim() || loading) return
+    // Text still in the box counts, so nobody has to press Enter first.
+    const where = withPlace(places, placeDraft)
+    setPlaces(where)
+    setPlaceDraft('')
+    await runSearch(q.trim(), where)
+  }
+
+  // Arriving with ?q= (from Home) runs that search once, with the defaults.
+  const ranFromLink = useRef(false)
+  useEffect(() => {
+    if (ranFromLink.current || !q.trim()) return
+    ranFromLink.current = true
+    void runSearch(q.trim(), places)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const renderJob = (job: JobPosting, section: 'stated' | 'estimated' = 'stated') => (
       <article key={job.id} data-section={section}

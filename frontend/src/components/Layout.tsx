@@ -1,8 +1,9 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { LayoutDashboard, Route as RouteIcon, FileText, UserCircle, Search, LogOut } from 'lucide-react'
+import { Home, LayoutDashboard, Route as RouteIcon, FileText, UserCircle, Search, LogOut } from 'lucide-react'
 
 const navItems = [
+  { label: 'Home', icon: Home, path: '/home' },
   { label: 'Find Roles', icon: Search, path: '/jobs' },
   { label: 'My Applications', icon: FileText, path: '/applications' },
   { label: 'Career Pathway', icon: RouteIcon, path: '/pathway' },

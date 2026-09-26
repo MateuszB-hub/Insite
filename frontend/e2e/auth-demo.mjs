@@ -11,7 +11,7 @@
 import { chromium } from 'playwright'
 import { mkdirSync, rmSync } from 'node:fs'
 
-const BASE = 'http://localhost:5173'
+const BASE = process.env.DEMO_BASE_URL ?? 'http://localhost:5173'
 const OUT = new URL('./output-auth/', import.meta.url).pathname
 rmSync(OUT, { recursive: true, force: true }); mkdirSync(OUT, { recursive: true })
 

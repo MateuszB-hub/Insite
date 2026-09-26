@@ -4,6 +4,7 @@ import RequireAuth from './auth/RequireAuth'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import HomePage from './pages/HomePage'
 import CareerPathwayPage from './pages/CareerPathwayPage'
 import JobSearchPage from './pages/JobSearchPage'
 import MyApplicationsPage from './pages/MyApplicationsPage'
@@ -27,7 +28,8 @@ function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="/jobs" replace />} />
+        <Route index element={<Navigate to="/home" replace />} />
+        <Route path="home" element={<HomePage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="pathway" element={<CareerPathwayPage />} />
         <Route path="jobs" element={<JobSearchPage />} />

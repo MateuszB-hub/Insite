@@ -32,7 +32,7 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const destination = (location.state as { from?: string } | null)?.from ?? '/jobs'
+  const destination = (location.state as { from?: string } | null)?.from ?? '/home'
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
