@@ -148,6 +148,48 @@ class BlsFallback(WageSource):
         return None
 
 
+class StoredBlsWages(WageSource):
+    """BLS OEWS wages from app/data/oews.json -- no network, no daily limit.
+
+    OEWS is published once a year, so a stored copy is as current as asking
+    BLS, and asking on every page view ran the key's 500-a-day limit out
+    (live pages lost their pay figures). Refreshed by app/scripts/vendor_bls.py.
+    """
+
+    name = "bls"
+    signup_url = "https://data.bls.gov/registrationEngine/"
+
+    def __init__(self) -> None:
+        from app.services.labor import taxonomy  # loaded lazily; it's large
+
+        data = taxonomy.oews()
+        self.year = data.get("year") or None
+        self.by_soc = {
+            soc: v for soc, v in data.get("by_soc", {}).items()
+            if v.get("median") is not None or v.get("mean") is not None
+        }
+        self.label = f"BLS OEWS {self.year} (stored)" if self.year else "BLS OEWS (stored)"
+
+    def configured(self) -> tuple[bool, str | None]:
+        if not self.by_soc:
+            return False, "No stored wages yet: run python -m app.scripts.vendor_bls"
+        return True, None
+
+    async def wages(self, code: str, title: str) -> WageEstimate | None:
+        row = self.by_soc.get(code)
+        if row is None:
+            return None
+        return WageEstimate(
+            occupation_code=code, occupation_title=title, source="BLS OEWS",
+            annual_median=row.get("median"), annual_mean=row.get("mean"),
+            employment=row.get("employment"), year=self.year,
+        )
+
+
 def get_wage_source() -> WageSource:
+    """Stored wages when there are any; else the live API; else none at all."""
+    stored = StoredBlsWages()
+    if stored.live:
+        return stored
     live = BlsSource()
     return live if live.live else BlsFallback()
