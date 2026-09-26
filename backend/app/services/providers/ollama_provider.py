@@ -130,7 +130,8 @@ class OllamaProvider(SynthesisProvider):
         try:
             return json.loads(content)
         except json.JSONDecodeError as exc:
-            logger.warning("ollama returned non-JSON content: %.200s", content)
+            # Length only: the content can be personal (résumé extraction).
+            logger.warning("ollama returned non-JSON content (%d chars)", len(content))
             raise ProviderUnavailable(
                 "Local model did not return valid JSON"
             ) from exc

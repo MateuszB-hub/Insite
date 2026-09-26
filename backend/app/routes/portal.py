@@ -12,13 +12,16 @@ Authorisation rules enforced here (never in the client):
 """
 
 import logging
+import time
+from collections import defaultdict, deque
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
 from app.auth.deps import CurrentUser, DbSession
 from app.auth.sessions import audit
+from app.services import resume
 from app.db.models import (
     Application,
     ApplicationEvent,
@@ -44,6 +47,7 @@ class ProfileIn(BaseModel):
     years_experience: int | None = Field(None, ge=0, le=70)
     location: str | None = Field(None, max_length=200)
     skills: list[str] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list, max_length=50)
     summary: str | None = Field(None, max_length=4000)
 
 
@@ -53,6 +57,7 @@ class ProfileOut(BaseModel):
     years_experience: int | None = None
     location: str | None = None
     skills: list[str] = []
+    certifications: list[str] = []
     summary: str | None = None
     updated_at: str | None = None
 
@@ -66,6 +71,7 @@ class ProfileOut(BaseModel):
             years_experience=p.years_experience,
             location=p.location,
             skills=p.skill_list(),
+            certifications=p.certification_list(),
             summary=p.summary,
             updated_at=p.updated_at.isoformat() if p.updated_at else None,
         )
@@ -74,6 +80,58 @@ class ProfileOut(BaseModel):
 @router.get("/me/profile", response_model=ProfileOut)
 def get_profile(user: CurrentUser):
     return ProfileOut.of(user.profile)
+
+
+#: Résumé reading runs the local model (~30 s); one worker, one model. A
+#: handful an hour is plenty for a person and stops anyone tying it up.
+RESUME_LIMIT = 5
+RESUME_WINDOW_S = 3600
+_resume_uses: dict[str, deque] = defaultdict(deque)
+
+
+class ResumeFields(BaseModel):
+    current_role: str | None = None
+    location: str | None = None
+    years_experience: int | None = None
+    industry: str | None = None
+    summary: str | None = None
+    skills: list[str] = []
+    certifications: list[str] = []
+
+
+class ResumeSuggestion(BaseModel):
+    #: What to put in the form. Nothing has been saved.
+    fields: ResumeFields
+    #: Where each value came from: "résumé", "calculated from your job
+    #: dates", or "suggested" (the model's own words: industry, summary).
+    sources: dict[str, str] = {}
+    #: Items the model returned that aren't in the résumé, so were dropped.
+    dropped: dict[str, int] = {}
+    jobs_found: int = 0
+    pages: int = 0
+    engine: str = ""
+
+
+@router.post("/me/profile/resume", response_model=ResumeSuggestion)
+async def suggest_from_resume(user: CurrentUser, file: UploadFile = File(...)):
+    """Read a résumé PDF and suggest profile fields. Saves nothing.
+
+    The file and its text stay in memory for this request only: not stored,
+    not logged, and read by the local model, never an outside service.
+    """
+    now = time.monotonic()
+    uses = _resume_uses[user.id]
+    while uses and now - uses[0] > RESUME_WINDOW_S:
+        uses.popleft()
+    if len(uses) >= RESUME_LIMIT:
+        raise HTTPException(429, "That's a few résumés in the last hour. Please try again later.")
+    uses.append(now)
+
+    data = await file.read(resume.MAX_BYTES + 1)
+    try:
+        return await resume.suggest_profile(data)
+    except resume.ResumeError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.put("/me/profile", response_model=ProfileOut)
@@ -89,6 +147,8 @@ def put_profile(payload: ProfileIn, user: CurrentUser, db: DbSession):
     profile.years_experience = payload.years_experience
     profile.location = payload.location
     profile.skills = ", ".join(s.strip() for s in payload.skills if s.strip()) or None
+    profile.certifications = "\n".join(
+        c.strip()[:200] for c in payload.certifications if c.strip()) or None
     profile.summary = payload.summary
     profile.updated_at = utcnow()
 

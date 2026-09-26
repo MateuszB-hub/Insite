@@ -257,6 +257,9 @@ class ApplicantProfile(Base):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     #: Comma-separated. A join table is overkill until we need to query by skill.
     skills: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: One per line: certification names often contain commas
+    #: ("Certified Scrum Master, CSM").
+    certifications: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     updated_at: Mapped[datetime] = mapped_column(
@@ -267,6 +270,9 @@ class ApplicantProfile(Base):
 
     def skill_list(self) -> list[str]:
         return [s.strip() for s in (self.skills or "").split(",") if s.strip()]
+
+    def certification_list(self) -> list[str]:
+        return [c.strip() for c in (self.certifications or "").splitlines() if c.strip()]
 
 
 class ApplicationStatus(str, enum.Enum):
