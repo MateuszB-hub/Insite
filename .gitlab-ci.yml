@@ -1,0 +1,55 @@
+# Insite CI/CD
+#
+#   merge request / push to main  ->  tests + security scans
+#   tag v*                        ->  tests -> deploy to staging (added in step 6)
+#                                     -> manual "promote to live"
+#
+# Test jobs run on GitLab's shared runners and need no secrets: the backend
+# suite uses a throwaway SQLite database. Deploy jobs (later) run only on the
+# protected runner on the Mac, where the real env files live.
+
+stages:
+  - test
+  - deploy
+
+workflow:
+  rules:
+    # One pipeline per change: MR pipelines for MRs, branch pipelines for
+    # main, tag pipelines for releases. Never both for the same push.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+
+test:backend:
+  stage: test
+  image: python:3.12-slim
+  variables:
+    DATABASE_URL: "sqlite:///./ci.db"
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  cache:
+    key:
+      files: [backend/requirements.txt]
+    paths: [.cache/pip]
+  script:
+    - cd backend
+    - pip install -q -r requirements.txt pytest
+    - python -m pytest -q
+
+test:frontend:
+  stage: test
+  image: node:24-slim
+  cache:
+    key:
+      files: [frontend/package-lock.json]
+    paths: [.cache/npm]
+  script:
+    - cd frontend
+    - npm ci --cache "$CI_PROJECT_DIR/.cache/npm" --prefer-offline
+    - npm run typecheck
+    - npm run build
