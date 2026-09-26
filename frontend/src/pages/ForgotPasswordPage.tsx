@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
           <p className="text-4xl font-bold text-white tracking-tight">
             <span className="text-indigo-400">In</span>site
           </p>
-          <p className="text-slate-400 mt-2">HR Applicant Portal</p>
+          <p className="text-slate-400 mt-2">Career planning for any field</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">

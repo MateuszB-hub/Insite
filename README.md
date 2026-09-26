@@ -1,52 +1,132 @@
 # Insite
 
-HR applicant portal. React + TypeScript + Vite frontend, FastAPI backend that
-researches "Future of Work" trends for a given industry.
+**Career planning for job seekers in any field.** Enter the work you do today
+and Insite shows where it can realistically lead: which roles open up next,
+what they pay, who is hiring, and which other jobs your current skills
+already carry over to. It also filters job postings honestly, and lets you
+keep track of the applications you send.
 
-Analysis runs on **local models by default** — no API key, no per-token cost,
-and no applicant data leaving the machine. A metered paid tier is wired in but
-switched off until you opt in.
+Built for people planning their next move, not just "which software company
+next". Career paths cover **867 occupations across all 23 US occupation
+groups**, from nurses and electricians to accountants, cooks and truck
+drivers.
 
-## Layout
+> Live at **app.mateuszbieda.dev**. Invite-only while in early testing.
+
+## What it does
+
+| Feature | What you get |
+|---|---|
+| **Career Pathway** | From your current role: realistic next steps, official wages (BLS), who is hiring (Adzuna), and a readable summary |
+| **Your skills also apply to** | Other occupations your skills transfer to, labelled *likely qualify now* vs *needs more training*, with the pay difference |
+| **Honest job filter** | Every posting says whether its salary is **employer-stated or estimated**, and whether "remote" is **really remote** |
+| **Application tracking** | Mark live postings as applied and record what happened next; survives reposts |
+| **Your data, your call** | Export everything you've entered from the profile page; account erasure is built into the API (`DELETE /api/me`) |
+
+### Why the honest filter exists
+
+Measured against live Adzuna data before building it: of **250** sampled US
+postings, only **14%** carried an employer-stated salary. The other 86% were
+the job board's own predictions, returned in the same fields. A search for
+"remote software engineer" returned 1,206 results, of which exactly **one**
+was genuinely remote with employer-stated pay.
+
+So every posting carries a `salary_source` (stated / estimated / absent) and
+a `remote_claim` (remote / conflicted / onsite), shown in the UI. A salary
+floor only admits employer-stated figures, and when filters hide results the
+UI says how many and why.
+
+## Design principles
+
+- **Facts come from data; the model only writes prose.** Occupations, pathways,
+  wages and hiring figures come from O*NET, BLS and Adzuna. The language model
+  turns them into a readable summary and never supplies a number.
+- **A fallback is never presented as measured data.** Each response names its
+  sources, and the UI flags any source that isn't live. Missing wage data is
+  `null`, never a plausible guess.
+- **Local AI by default.** Summaries run on a local model through Ollama: no
+  per-token cost, and nothing a user enters is sent to an outside AI service.
+  A paid API tier exists but is off unless explicitly enabled twice (see
+  [Engines](#engines)).
+- **Privacy by default.** Argon2id passwords, server-side sessions, CSRF
+  protection, PII and credentials redacted from logs, data export and
+  erasure, scheduled retention.
+
+## Architecture
 
 ```
-frontend/                      React + TS + Vite + Tailwind v4
-  src/lib/api.ts               typed API client (mirrors the Pydantic models)
-  src/components/
-    Dashboard.tsx              industry input + structured findings display
-    ProviderPicker.tsx         engine selector; locks the paid tier
-    Layout.tsx                 sidebar shell
-  src/pages/                   route wrappers
-backend/
-  main.py                      entrypoint -> `uvicorn main:app`
-  app/main.py                  FastAPI app, CORS, router wiring
-  app/routes/future_of_work.py endpoints + request/response models
-  app/services/
-    search_service.py          web-search layer (mock | tavily)
-    synthesis_service.py       prompt construction + report schema
-    providers/
-      base.py                  SynthesisProvider contract, tiers
-      __init__.py              registry, auto-select, paid gating
-      ollama_provider.py       local models  (tier: local)
-      anthropic_provider.py    paid API      (tier: paid)
-      mock_provider.py         offline stub  (tier: local)
-dev.sh                         launches both servers
+Browser ── React + TypeScript + Vite + Tailwind
+   │
+   ▼  /api  (same origin; CSRF-checked)
+FastAPI ── routes ─► services ─► labour sources   O*NET · BLS · Adzuna
+   │                    │       ► synthesis        Ollama (local) · Anthropic (off)
+   │                    │       ► web search       Tavily · mock
+   ▼
+Postgres 17 (Alembic migrations)
 ```
 
-## Run
+```
+frontend/src/
+  pages/, components/      Career Pathway, Find Roles, Applications, Profile
+  lib/api.ts               typed API client (mirrors the Pydantic models)
+backend/app/
+  routes/                  career, jobs, portal (profile/applications), auth
+  services/labor/          O*NET, BLS, Adzuna clients + skills taxonomy
+  services/providers/      synthesis engines: ollama, anthropic, mock
+  services/job_search.py   honest filter: salary provenance, remote verification
+  middleware/              CSRF, security headers
+  data/                    vendored O*NET occupations and relatedness graph
+backend/tests/             159 tests (SQLite, no network, no secrets)
+frontend/e2e/              browser checks (Playwright)
+```
+
+## Data sources
+
+| Need | Source | Notes |
+|---|---|---|
+| Occupations, related roles, skills | **O*NET** | Public database files vendored in `backend/app/data/` (867 occupations, 15,933 relatedness edges, 35-dimension skill profiles) |
+| Wages | **BLS OEWS** | Needs a free key. Verified against the live API: keyless access returns no wage series at all |
+| Hiring, top employers, pay spread | **Adzuna** | Free tier |
+| Recent context | **Tavily** | Optional; web search is garnish, not the substrate |
+
+US-first by necessity: O*NET and BLS are US-only. Other countries need their
+own sources (e.g. ONS in the UK, ESCO in the EU); the provider pattern makes
+that additive.
+
+## Run it locally
+
+Requirements: Python 3.12, Node 20+, Docker, and optionally
+[Ollama](https://ollama.com) (`ollama pull llama3.1:8b`). Without Ollama the
+backend falls back to a mock engine.
 
 ```bash
-npm run dev     # or: ./dev.sh
+# 1. Database
+cp .env.example .env                       # set POSTGRES_PASSWORD
+docker compose up -d
+
+# 2. Backend
+cp backend/.env.example backend/.env       # set DATABASE_URL; API keys optional
+uv venv --python 3.12 backend/.venv        # or: python3.12 -m venv backend/.venv
+uv pip install --python backend/.venv/bin/python -r backend/requirements.txt
+(cd backend && .venv/bin/alembic upgrade head)
+
+# 3. Frontend
+(cd frontend && npm install)
+
+# 4. Both servers
+./dev.sh                                   # open http://localhost:5173
 ```
 
-- Frontend: http://localhost:5173 ← open this one
-- Backend: http://localhost:8000 (interactive API docs at `/docs`)
+Every setting has a safe default; data sources without keys run on clearly
+labelled fallbacks. `GET /api/labor/status` shows which sources are live.
 
-Vite proxies `/api` to port 8000, so the browser only talks to 5173.
+### Tests
 
-For local analysis, Ollama must be running: `ollama serve`. If it isn't,
-`dev.sh` warns and the backend falls back to the mock provider rather than
-failing.
+```bash
+cd backend && .venv/bin/python -m pytest -q          # 159 tests
+cd frontend && npm run typecheck && npm run build
+cd frontend && npm run demo        # browser checks; needs ./dev.sh running
+```
 
 ## Engines
 
@@ -56,143 +136,53 @@ failing.
 | `mock` | local | no | fallback |
 | `anthropic` | **paid** | `ANTHROPIC_API_KEY` | 🔒 off |
 
-`SYNTHESIS_PROVIDER=auto` (the default) tries **ollama → mock**. It will
-*never* auto-select a paid provider. Spending money takes two explicit steps:
-
-1. `ENABLE_PAID_PROVIDERS=true`
-2. Name it — `SYNTHESIS_PROVIDER=anthropic`, or per-request
-   `{"provider": "anthropic"}`
-
-Miss either and the API returns `503` with the reason. Every response carries
-`provider` / `provider_label`, and the UI badges which engine wrote the report.
-
-### Local models
-
-Configured via `OLLAMA_MODEL`. Bare names resolve to a pulled tag, so
-`llama3.1` finds `llama3.1:8b`. Currently pulled here: `llama3.1:8b`,
-`qwen3.5:9b`, `qwen2.5:7b`, `qwen2.5-coder:7b`, `qwen-agent`.
+`SYNTHESIS_PROVIDER=auto` tries **ollama → mock** and never auto-selects a
+paid provider. Spending money takes two explicit steps:
+`ENABLE_PAID_PROVIDERS=true` **and** naming the provider. Miss either and the
+API returns `503` with the reason.
 
 Generation is constrained by a JSON schema passed to Ollama's `format`
 parameter, so output conforms without relying on the model to follow
-formatting instructions. Expect ~20-25s per report on an 8B model; the
-frontend sets expectations during the wait and `OLLAMA_TIMEOUT` defaults to
-300s.
+formatting instructions. Expect ~20–25 s per summary on an 8B model.
 
-### Adding another engine
+Adding an engine: subclass `SynthesisProvider`, implement `generate_json` and
+`health`, register it in `_REGISTRY`. That's the path for vLLM, llama.cpp,
+LM Studio, OpenAI or Gemini.
 
-Subclass `SynthesisProvider`, implement `generate_json` and `health`, add it to
-`_REGISTRY`. Roughly 40 lines — that is the path for vLLM, llama.cpp,
-LM Studio, OpenAI, or Gemini.
+## Search layer: measured, not guessed
 
-## API
+DuckDuckGo publishes no web-search API; the `ddgs` package scrapes HTML
+endpoints. Measured from one residential IP:
 
-```
-GET  /api/health
-GET  /api/providers          -> engines, availability, paid_enabled
-POST /api/future-of-work     -> {"industry": "...", "job_title": "...", "provider": "..."}
-```
+- 12-query burst at ~0.5 req/s → **1 hard failure (~8%)**
+- Pinned to DuckDuckGo only, 5-query fan-out → **4 of 5 queries failed all 3 retries**
+- Left on `auto`, the same fan-out succeeded, because `ddgs` 9.x silently
+  fans out to Google, Bing, Brave, Yandex and others, none of which permit it
 
-`job_title` and `provider` are optional. Status codes: `422` invalid input,
-`503` engine unavailable (with an actionable reason), `502` unexpected failure.
+So `ddg` stays a dev-only option pinned to DuckDuckGo, and production uses
+Tavily.
 
-## Search layer — measured, not guessed
+## Delivery
 
-| Provider | Key | Cost | Verdict |
-|---|---|---|---|
-| `mock` | no | free | default; deterministic stand-ins |
-| `ddg` | no | free | **dev/demo only** — see below |
-| `tavily` | yes | paid | production path |
+- **CI** (GitLab): backend tests, frontend typecheck and build, SAST and
+  secret detection on every change.
+- **Environments:** dev → staging → live. A release is a git tag; it deploys
+  to staging, and the same tag is promoted to live.
+- **Production mode** (`serve.sh`) serves the built frontend from the API
+  process on one origin, runs migrations, and refuses to start with insecure
+  settings (non-HTTPS URL, insecure cookies, localhost CORS, undeliverable
+  email).
+- **Backups:** nightly encrypted `pg_dump` with an offsite copy.
 
-### What testing DuckDuckGo actually showed
+## Attribution
 
-DuckDuckGo publishes **no web-search API**. (`api.duckduckgo.com` is the
-Instant Answer API — definitions and disambiguation, not web results.) The only
-route is the `ddgs` package, which scrapes HTML endpoints.
+This site incorporates information from O*NET Web Services by the U.S.
+Department of Labor, Employment and Training Administration (USDOL/ETA).
+O*NET® is a trademark of USDOL/ETA. O*NET data is licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Wage data from the
+U.S. Bureau of Labor Statistics. Job data from Adzuna.
 
-Measured on this machine, single residential IP:
+## License
 
-- 12-query burst, no concurrency, ~0.5 req/s → **1 hard failure (~8%)**
-- Pinned to DuckDuckGo only (`DDG_BACKEND=duckduckgo`), 5-query fan-out →
-  **4 of 5 queries failed all 3 retries**
-- Left on `auto`, the same fan-out returned **25 good findings** (Deloitte,
-  WRI, WEF) in ~62s
-
-That gap matters: `ddgs` 9.x bundles ~17 engines and, unpinned, silently fans
-out to **Google, Bing, Brave, Yandex, Startpage, Mojeek, Yahoo**. Brave and
-Google returned `429`/captcha during the run. So "we use DuckDuckGo" would be
-inaccurate — unpinned, it scrapes most of the major engines, none of which
-permit it.
-
-We default to `DDG_BACKEND=duckduckgo` so behaviour matches the name. Set
-`auto` for resilience, understanding what it does.
-
-**Bottom line:** fine for local dev. Not something to put in front of
-applicants — it is a scraper against ToS, with no availability guarantee.
-
-## Career pathway — the labour-market layer
-
-`POST /api/career-pathway` answers *"doing this work, after N months, what
-opens up, who's hiring, what's the pay?"* by composing three sources, each
-independently live or mocked:
-
-| Capability | Source | Status | Register |
-|---|---|---|---|
-| Occupations + adjacency | O*NET | offline fallback | [developer](https://services.onetcenter.org/developer) |
-| Wages | BLS OEWS | needs key | [registration](https://data.bls.gov/registrationEngine/) |
-| Hiring + pay spread | Adzuna | needs key | [developer](https://developer.adzuna.com/) |
-
-`GET /api/labor/status` reports which are live and where to register. Every
-response carries `data_sources`, and the UI shows an amber banner naming what
-is not yet connected — **a fallback is never presented as measured data**.
-
-Design notes worth keeping:
-
-- **BLS keyless does not cover wages.** Verified against the live API: CES/LNS
-  series return data without a key, but every OEWS wage series returns "No Data
-  Available" — including BLS's own documented example. The key is required for
-  any pay figure.
-- **Missing wage data returns `null`, not an estimate.** Pay is the field an
-  applicant is most likely to act on, so the fallback omits it rather than
-  inventing a plausible number. Likewise Adzuna's fallback names no employers.
-- **Credentialled paths are tested.** Adzuna and BLS parsing were exercised
-  against local stub servers shaped like the real APIs, so adding keys turns on
-  a verified path rather than untested code.
-- OEWS series IDs are built by `oews_series_id()`:
-  `OE + U + areatype(1) + area(7) + industry(6) + occupation(6) + datatype(2)`.
-
-## Where the real answers come from
-
-The goal — *"after a year in this role, what opens up, who hires, what's the
-pay?"* — is mostly **not** a web-search problem. Search returns prose; that
-question wants structured labour-market data:
-
-| Need | Source | Key | Cost |
-|---|---|---|---|
-| Role → adjacent roles, skills | **O*NET Web Services** | register | free |
-| Wages, employment projections | **BLS Public API v2** | optional | free (500/day) |
-| Live postings, **top hiring companies**, **salary histograms**, salary history | **Adzuna** | register | free tier (~1k/mo) |
-| Narrative colour, recent news | Tavily / Brave / Exa | yes | paid |
-
-- **O*NET** answers "what would I qualify for" — related occupations and
-  skill overlap, not a model's guess.
-- **BLS** answers "what is the pay" with official wage data. Verified working
-  keyless here (returned Aug 2026 figures).
-- **Adzuna** answers "who has been hiring" directly: `top_companies` and
-  `histogram` endpoints, plus salary `history` for the look-back.
-
-Web search should be the *garnish* on that, not the substrate.
-
-## Environment
-
-Copy `backend/.env.example` to `backend/.env` and edit. Every value has a safe
-default; the app runs with no `.env` at all.
-
-## Toolchain notes
-
-- **Python 3.12.14**, installed via [uv](https://docs.astral.sh/uv/) into
-  `~/.local/share/uv/python`. The venv is `backend/.venv`. macOS system Python
-  (3.9) is no longer used.
-- Rebuild the backend env: `uv venv --python 3.12 backend/.venv && uv pip install -r backend/requirements.txt`
-- **Tailwind v4** via `@tailwindcss/vite`, not PostCSS. No `tailwind.config.js`
-  is needed.
-- `dev.sh` targets macOS bash 3.2, so no `wait -n`.
+No license is granted. The source is published so it can be read and
+reviewed; all rights are reserved.

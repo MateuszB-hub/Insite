@@ -39,7 +39,7 @@ _PUBLIC = os.getenv("SERVE_STATIC", "").lower() in {"1", "true", "yes"}
 
 app = FastAPI(
     title="Insite API",
-    description="Backend API for the Insite HR applicant portal",
+    description="Backend API for Insite: career planning for job seekers",
     version="0.1.0",
     docs_url=None if _PUBLIC else "/docs",
     redoc_url=None if _PUBLIC else "/redoc",

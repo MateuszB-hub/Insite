@@ -29,7 +29,7 @@ export default function Layout() {
           <p className="text-2xl font-bold tracking-tight">
             <span className="text-indigo-400">In</span>site
           </p>
-          <p className="text-xs text-slate-400 mt-1">HR Applicant Portal</p>
+          <p className="text-xs text-slate-400 mt-1">Career planning for any field</p>
         </div>
         <nav className="flex-1 px-3">
           {navItems.map((item) => {
