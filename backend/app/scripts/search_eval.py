@@ -1,6 +1,8 @@
 """Measure how well Find Roles' matching finds the role that was asked for.
 
     python -m app.scripts.search_eval [strategy ...]      (default: all)
+    python -m app.scripts.search_eval --abbrev            O*NET spelling
+                                                          variants on vs off
 
 Runs the real search pipeline (search_jobs) for a fixed set of role x place
 cases across fields, and scores each result title against a lenient test of
@@ -45,11 +47,20 @@ CASES: list[tuple[str, str | None, str]] = [
     ("accountant", "Omaha", r"\baccount"),
 ]
 
+#: Titles people abbreviate, in places small enough that one spelling alone
+#: runs short -- where learned variants ("RN" <-> "registered nurse") can help.
+ABBREV_CASES: list[tuple[str, str | None, str]] = [
+    ("RN", "Casper", r"\b(rn|nurse|nursing)\b"),
+    ("registered nurse", "Casper", r"\b(rn|nurse|nursing)\b"),
+    ("HR manager", "Omaha", r"\b(hr|human resources?)\b"),
+    ("CNA", "Tulsa", r"\b(cna|nursing assistant|nurse aide|nurses aide)\b"),
+]
 
-async def evaluate(strategy: str) -> dict:
+
+async def evaluate(strategy: str, cases=None) -> dict:
     job_search.clear_search_cache()
     rows, shown_all, on_all, loose_all = [], 0, 0, 0
-    for query, place, relevant in CASES:
+    for query, place, relevant in cases or CASES:
         result = await job_search.search_jobs(
             query, [place] if place else None,
             max_days_old=30, limit=30, strategy=strategy)
@@ -81,5 +92,18 @@ async def main(strategies: list[str]) -> None:
         report(strategy, await evaluate(strategy))
 
 
+async def main_abbrev() -> None:
+    report("title + O*NET variants", await evaluate("title", ABBREV_CASES))
+    real = job_search.abbreviations.variants
+    job_search.abbreviations.variants = lambda query: []
+    try:
+        report("title, variants off", await evaluate("title", ABBREV_CASES))
+    finally:
+        job_search.abbreviations.variants = real
+
+
 if __name__ == "__main__":
-    asyncio.run(main(sys.argv[1:] or list(job_search.STRATEGIES)))
+    if sys.argv[1:] == ["--abbrev"]:
+        asyncio.run(main_abbrev())
+    else:
+        asyncio.run(main(sys.argv[1:] or list(job_search.STRATEGIES)))

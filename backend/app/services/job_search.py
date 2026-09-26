@@ -33,6 +33,8 @@ from typing import Any
 
 import httpx
 
+from app.services.labor import abbreviations
+
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.adzuna.com/v1/api"
@@ -190,6 +192,9 @@ class SearchResult:
     #: fetched when title matches run short. Shown apart and labelled, never
     #: mixed in -- this is where off-topic results come from.
     loose_matches: list["JobPosting"] = field(default_factory=list)
+    #: Other spellings of the title also searched ("quality assurance lead"
+    #: for "QA lead"), learned from O*NET. Empty when none were needed.
+    also_searched: list[str] = field(default_factory=list)
 
 
 def classify_salary(raw: dict[str, Any]) -> SalarySource:
@@ -564,10 +569,13 @@ async def search_jobs(
         base["max_days_old"] = max_days_old
     targets: list[str | None] = list(places) or [None]
 
-    async def fetch(client: httpx.AsyncClient, place: str | None, page: int) -> dict[str, Any]:
+    async def fetch(client: httpx.AsyncClient, place: str | None, page: int,
+                    title: str | None = None) -> dict[str, Any]:
         params = dict(base)
         if place:
             params["where"] = place
+        if title:
+            params["title_only"] = title
         response = await client.get(f"{BASE_URL}/jobs/{COUNTRY}/search/{page}", params=params)
         response.raise_for_status()
         return response.json()
@@ -613,6 +621,24 @@ async def search_jobs(
         await first_pages(client)
         result.pages_fetched = 1
 
+        # Fewer title matches than a page holds: also try the other ways the
+        # title is written, learned from O*NET ("QA lead" -> "quality
+        # assurance lead", "registered nurse" -> "RN"). Well-served searches
+        # cost nothing extra.
+        extra_total = 0
+        if strategy == "title" and sum(counts.values()) < per_page:
+            for variant in abbreviations.variants(query):
+                outcomes = await asyncio.gather(
+                    *(fetch(client, t, 1, title=variant) for t in pages), return_exceptions=True)
+                found = 0
+                for target, outcome in zip(list(pages), outcomes):
+                    if isinstance(outcome, BaseException):
+                        continue
+                    pages[target].extend(outcome.get("results", []))
+                    found += outcome.get("count") or 0
+                result.also_searched.append(variant)
+                extra_total += found
+
         # Filters that discard most adverts get another page or two, but only
         # while places still have more to give.
         filtering = (salary_min is not None or require_stated_salary or remote_only
@@ -630,7 +656,7 @@ async def search_jobs(
                     pages[target].extend(outcome.get("results", []))
             result.pages_fetched = page
 
-    result.total_available = sum(counts.values()) if counts else None
+    result.total_available = (sum(counts.values()) + extra_total) if counts else None
 
     candidates = build()
 

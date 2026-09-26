@@ -67,6 +67,8 @@ class JobSearchResponse(BaseModel):
     match: str = "title"
     #: Adverts that only mention the words somewhere; shown apart, labelled.
     loose_matches: list[JobOut] = []
+    #: Other spellings of the title also searched, e.g. "quality assurance lead".
+    also_searched: list[str] = []
 
 
 @router.get("/jobs/search", response_model=JobSearchResponse)
@@ -134,4 +136,5 @@ async def job_search(
         excluded_other_type=result.excluded_other_type,
         match=result.match,
         loose_matches=[JobOut(**p.to_dict()) for p in result.loose_matches],
+        also_searched=result.also_searched,
     )

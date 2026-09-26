@@ -395,6 +395,8 @@ def test_short_title_matches_add_loose_matches_apart(monkeypatch):
     monkeypatch.setenv("ADZUNA_APP_ID", "id")
     monkeypatch.setenv("ADZUNA_APP_KEY", "key")
 
+    # This test is about the loose list; spelling variants are tested elsewhere.
+    monkeypatch.setattr(job_search.abbreviations, "variants", lambda query: [])
     result = asyncio.run(search_jobs("QA lead", limit=10))
     assert [("title_only" in r, "what" in r) for r in requests] == [(True, False), (False, True)]
     assert [p.id for p in result.postings] == ["t"]

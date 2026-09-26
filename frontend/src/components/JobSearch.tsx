@@ -439,7 +439,10 @@ export default function JobSearch() {
 
           {data.match === 'title' && (
             <p className="text-sm text-slate-500 mb-3" data-testid="match-note">
-              Jobs with {multiWord ? <>every word of "{q.trim()}"</> : <>"{q.trim()}"</>} in the job title.
+              Jobs with {multiWord ? <>every word of "{q.trim()}"</> : <>"{q.trim()}"</>} in the job title
+              {data.also_searched && data.also_searched.length > 0 && (
+                <>, also written {data.also_searched.map((v) => `"${v}"`).join(' or ')}</>
+              )}.
             </p>
           )}
 

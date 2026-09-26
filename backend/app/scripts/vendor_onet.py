@@ -6,8 +6,10 @@ and skill matching all work offline with no credentials and no startup cost.
 
     python -m app.scripts.vendor_onet
 
-Writes app/data/occupations.json (titles, descriptions, job zone, skills)
-and app/data/related.json (O*NET's own relatedness graph).
+Writes app/data/occupations.json (titles, descriptions, job zone, skills),
+app/data/related.json (O*NET's own relatedness graph) and
+app/data/abbreviations.json (job-title abbreviations learned from O*NET's
+alternate and reported titles, e.g. QA <-> quality assurance).
 """
 
 import csv
@@ -16,6 +18,8 @@ import json
 from pathlib import Path
 
 import httpx
+
+from app.services.labor import abbreviations
 
 BASE = "https://www.onetcenter.org/dl_files/database/db_30_0_text/"
 OUT = Path(__file__).resolve().parent.parent / "data"
@@ -107,6 +111,13 @@ def main() -> None:
     )
     (OUT / "related.json").write_text(json.dumps(related, indent=0))
 
+    print("  learning title abbreviations…")
+    title_rows = [(r["Alternate Title"], r.get("Short Title") or "")
+                  for r in fetch("Alternate Titles.txt")]
+    title_rows += [(r["Reported Job Title"], "") for r in fetch("Sample of Reported Titles.txt")]
+    abbrev = abbreviations.derive(abbreviations.pairs_from_titles(title_rows))
+    (OUT / "abbreviations.json").write_text(json.dumps(abbrev, indent=0, sort_keys=True))
+
     with_skills = sum(1 for o in occupations if o["skills"])
     with_zone = sum(1 for o in occupations if o["job_zone"])
     print(f"\n  occupations      : {len(occupations)}")
@@ -114,7 +125,8 @@ def main() -> None:
     print(f"  with job zone    : {with_zone}")
     print(f"  relatedness graph: {len(related)} sources, "
           f"{sum(len(v) for v in related.values())} edges")
-    for f in ("occupations.json", "related.json"):
+    print(f"  abbreviations    : {len(abbrev)}")
+    for f in ("occupations.json", "related.json", "abbreviations.json"):
         print(f"  {f:22} {(OUT / f).stat().st_size:>9,} bytes")
 
 

@@ -531,6 +531,8 @@ export interface JobSearchResponse {
   match?: 'title' | 'words'
   /** Adverts that only mention the words somewhere. Shown apart, labelled. */
   loose_matches?: JobPosting[]
+  /** Other spellings also searched, learned from O*NET ("RN" for "registered nurse"). */
+  also_searched?: string[]
 }
 
 /** Adzuna takes one place per query; the backend runs up to this many. */
