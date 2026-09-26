@@ -4,7 +4,8 @@
 #
 #   1. GitLab: Settings -> CI/CD -> Runners -> New project runner
 #      (tag insite-mac, "Run untagged jobs" OFF, "Protected" ON) -> Create.
-#   2. Copy the runner token (glrt-...) it shows, then in a terminal:
+#   2. Click the copy button beside the register command it shows (the whole
+#      command is fine; the glrt-... token is taken from it), then:
 #        pbpaste > ~/.config/insite/gitlab-runner-token && chmod 600 ~/.config/insite/gitlab-runner-token
 #   3. ./scripts/install_runner.sh
 #
@@ -43,8 +44,10 @@ if [ -f "$CONFIG" ] && grep -q 'url = "https://gitlab.com' "$CONFIG"; then
   echo "already registered ($CONFIG)"
 else
   [ -s "$TOKEN_FILE" ] || die "no runner token in $TOKEN_FILE (see step 2 at the top of this script)"
-  token="$(tr -d '[:space:]' < "$TOKEN_FILE")"
-  case "$token" in glrt-*) ;; *) die "$TOKEN_FILE does not hold a glrt- runner token" ;; esac
+  # Accept the bare token or GitLab's whole "gitlab-runner register ...
+  # --token glrt-..." command from its copy button, whichever was pasted.
+  token="$(grep -oE 'glrt-[A-Za-z0-9_.-]+' "$TOKEN_FILE" | head -n 1 || true)"
+  [ "${#token}" -ge 20 ] || die "$TOKEN_FILE does not hold a whole glrt- runner token (${#token} characters found)"
 
   # Jobs get a login-free environment, so hand them the tools live.sh uses.
   tool_path=""
