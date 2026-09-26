@@ -54,7 +54,7 @@ def _cache_get(key: tuple) -> dict[str, Any] | None:
     if not hit:
         return None
     stored_at, value = hit
-    if time.monotonic() - stored_at > CACHE_TTL:
+    if time.time() - stored_at > CACHE_TTL:
         _cache.pop(key, None)
         return None
     return value
@@ -64,7 +64,9 @@ def _cache_put(key: tuple, value: dict[str, Any]) -> None:
     if len(_cache) >= CACHE_MAX:
         # Drop the oldest entry; ordinary dicts preserve insertion order.
         _cache.pop(next(iter(_cache)), None)
-    _cache[key] = (time.monotonic(), value)
+    # Wall-clock, not monotonic: macOS pauses the monotonic clock while the
+    # machine sleeps, which kept entries "fresh" for hours on the dev Mac.
+    _cache[key] = (time.time(), value)
 
 
 def clear_pathway_cache() -> None:
@@ -183,7 +185,12 @@ async def build_career_pathway(
     neighbours = [occ for occ in neighbours if _reachable(horizon_months, occ)]
 
     # Wages for the current role and every destination, concurrently.
+    # An unexpected failure (usually a BLS timeout) is transient, so a report
+    # that hit one is not cached -- otherwise wages vanish until the TTL ends.
+    wage_failed = False
+
     async def _wage(occ: Occupation):
+        nonlocal wage_failed
         if not occ.code:
             return None
         try:
@@ -191,7 +198,8 @@ async def build_career_pathway(
         except LaborDataError:
             return None
         except Exception as exc:
-            logger.warning("wage lookup failed for %s: %s", occ.code, exc)
+            wage_failed = True
+            logger.warning("wage lookup failed for %s: %r", occ.code, exc)
             return None
 
     wage_results = await asyncio.gather(
@@ -238,7 +246,8 @@ async def build_career_pathway(
     if include_narrative:
         report = await attach_narrative(report, provider_name=provider_name)
 
-    _cache_put(key, report)
+    if not wage_failed:
+        _cache_put(key, report)
     return report
 
 
