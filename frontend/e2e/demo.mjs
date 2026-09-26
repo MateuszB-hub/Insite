@@ -81,15 +81,26 @@ await page.screenshot({ path: `${OUT}/2-filled.png`, fullPage: true })
 
 const started = Date.now()
 await page.getByRole('button', { name: 'Map pathway' }).click()
-await page.screenshot({ path: `${OUT}/3-loading.png`, fullPage: true })
 
-await page.waitForSelector('text=What this means for you', { timeout: 240000 })
+// Tester: the old ~22 s wait was "too slow, most people would just leave".
+// The facts and badges must show first; the model's summary follows.
+await page.waitForSelector('text=Roles open to you', { timeout: 60000 })
+const factsIn = (Date.now() - started) / 1000
+const earlyBadges = await page.locator('span', { hasText: /^(Ready now|Stretch|Longer term)$/ }).count()
+const summaryPending = await page.locator('[data-testid="narrative-pending"]').count()
+await page.screenshot({ path: `${OUT}/3-facts-first.png`, fullPage: true })
+
+// The heading, not any text: the "writing a summary" note mentions it too.
+await page.waitForSelector('h2:text-is("What this means for you")', { timeout: 240000 })
 const elapsed = ((Date.now() - started) / 1000).toFixed(1)
 await page.waitForTimeout(700)
 await page.screenshot({ path: `${OUT}/4-result.png`, fullPage: true })
 
-console.log(`generated in ${elapsed}s\n`)
+console.log(`facts in ${factsIn.toFixed(1)}s, summary in ${elapsed}s\n`)
 console.log('assertions:')
+
+check('facts and badges show before the summary', factsIn < 10 && earlyBadges >= 3,
+      `${factsIn.toFixed(1)}s, ${earlyBadges} badges, summary ${summaryPending ? 'still writing' : 'already there (cached)'}`)
 
 // 1. narrative + attribution
 const summary = await page.locator('section', { hasText: 'What this means for you' }).first().innerText()

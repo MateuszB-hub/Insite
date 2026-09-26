@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import {
@@ -15,12 +15,13 @@ import {
 } from 'lucide-react'
 import {
   fetchCareerPathway,
+  fetchPathwayNarrative,
   type CareerPathwayResult,
   type DataSourceInfo,
   type OccupationInfo,
-  type Readiness,
 } from '../lib/api'
 import { markPathwayExplored } from '../lib/progress'
+import ReadinessBadge from './ReadinessBadge'
 import SourceAttribution from './SourceAttribution'
 import TransferableRoles from './TransferableRoles'
 
@@ -30,12 +31,6 @@ const HORIZONS = [
   { months: 24, label: '2 years' },
   { months: 60, label: '5 years' },
 ]
-
-const READINESS_STYLE: Record<Readiness, { label: string; cls: string }> = {
-  ready: { label: 'Ready now', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  stretch: { label: 'Stretch', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  'long-term': { label: 'Longer term', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-}
 
 const money = (n?: number | null) =>
   n == null ? null : `$${Math.round(n).toLocaleString()}`
@@ -47,7 +42,7 @@ const money = (n?: number | null) =>
  */
 export default function CareerPathway() {
   //: Home links here with ?role= (and ?industry=) from the profile. It fills
-  //: the form but does not run it: a full pathway still takes a while.
+  //: the form but does not run it: the person picks the horizon first.
   const [params] = useSearchParams()
   const [role, setRole] = useState(() => params.get('role') ?? '')
   const [industry, setIndustry] = useState(() => params.get('industry') ?? '')
@@ -55,26 +50,52 @@ export default function CareerPathway() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CareerPathwayResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  //: The facts arrive in a few seconds; the model's summary follows.
+  const [narrating, setNarrating] = useState(false)
+  const [narrativeError, setNarrativeError] = useState<string | null>(null)
+  //: A summary that lands after a newer search started must not replace it.
+  const requestId = useRef(0)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!role.trim() || loading) return
+    const id = ++requestId.current
+    const params = {
+      currentRole: role.trim(),
+      industry: industry.trim(),
+      horizonMonths: horizon,
+    }
     setLoading(true)
     setError(null)
     setResult(null)
+    setNarrating(false)
+    setNarrativeError(null)
     try {
-      setResult(
-        await fetchCareerPathway({
-          currentRole: role.trim(),
-          industry: industry.trim(),
-          horizonMonths: horizon,
-        }),
-      )
+      const facts = await fetchCareerPathway({ ...params, includeNarrative: false })
+      if (id !== requestId.current) return
+      setResult(facts)
       markPathwayExplored()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unexpected error')
+      if (id === requestId.current) {
+        setError(err instanceof Error ? err.message : 'Unexpected error')
+      }
+      return
     } finally {
-      setLoading(false)
+      if (id === requestId.current) setLoading(false)
+    }
+
+    setNarrating(true)
+    try {
+      const narrated = await fetchPathwayNarrative(params)
+      if (id !== requestId.current) return
+      if (narrated.narrative) setResult(narrated)
+      else setNarrativeError(narrated.narrative_status)
+    } catch (err) {
+      if (id === requestId.current) {
+        setNarrativeError(err instanceof Error ? err.message : 'Unexpected error')
+      }
+    } finally {
+      if (id === requestId.current) setNarrating(false)
     }
   }
 
@@ -199,9 +220,15 @@ export default function CareerPathway() {
                 </div>
               )}
             </section>
+          ) : narrating ? (
+            <p className="text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center gap-2"
+              data-testid="narrative-pending">
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              Writing a summary of what this means for you. Everything below is ready now.
+            </p>
           ) : (
             <p className="text-sm text-slate-500 bg-white border border-slate-200 rounded-xl p-4">
-              Guidance unavailable ({result.narrative_status}). The data below is unaffected.
+              Summary unavailable{narrativeError ? ` (${narrativeError})` : ''}. The data below is unaffected.
             </p>
           )}
 
@@ -289,17 +316,6 @@ export default function CareerPathway() {
         </div>
       )}
     </div>
-  )
-}
-
-function ReadinessBadge({ readiness }: { readiness?: Readiness | null }) {
-  if (!readiness) return null
-  const style = READINESS_STYLE[readiness]
-  if (!style) return null
-  return (
-    <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${style.cls}`}>
-      {style.label}
-    </span>
   )
 }
 

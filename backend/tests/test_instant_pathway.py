@@ -129,6 +129,18 @@ def test_narrative_follows_without_touching_the_cached_facts(pathway, monkeypatc
     assert all("rationale" not in p for p in facts["pathways"])
 
 
+def test_skills_panel_uses_the_same_readiness(pathway, monkeypatch):
+    # The page once said "Longer term" in one list and "Likely qualify now"
+    # in the other for the same occupation.
+    match = {"soc": UP_ONE.code, "title": UP_ONE.title, "description": "",
+             "similarity": 0.98, "requires_more_training": True, "job_zone": 5,
+             "skill_gaps": []}
+    monkeypatch.setattr(cs.taxonomy, "transferable", lambda code, limit=6: [match])
+    report = asyncio.run(cs.build_career_pathway("Nurse", horizon_months=24, include_narrative=False))
+    listed = next(p for p in report["pathways"] if p["code"] == UP_ONE.code)
+    assert report["transferable"][0]["readiness"] == listed["readiness"] == "stretch"
+
+
 def test_repeat_narrative_does_not_rerun_the_model(pathway, monkeypatch):
     calls = _fake_model(monkeypatch)
     asyncio.run(cs.narrate_career_pathway("Nurse", horizon_months=24))

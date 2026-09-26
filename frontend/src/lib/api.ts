@@ -171,6 +171,8 @@ export interface TransferableRole {
   similarity: number
   /** O*NET places this in a higher Job Zone than the current role. */
   requires_more_training: boolean
+  /** Same rule as the pathway list's badge. */
+  readiness?: Readiness | null
   job_zone?: number | null
   skill_gaps: SkillGap[]
   wage?: WageInfo | null
@@ -190,15 +192,17 @@ export interface CareerPathwayResult {
   narrative_status: string
 }
 
-export async function fetchCareerPathway(params: {
+export interface CareerPathwayParams {
   currentRole: string
   industry?: string
   horizonMonths?: number
   location?: string
   includeNarrative?: boolean
   signal?: AbortSignal
-}): Promise<CareerPathwayResult> {
-  const res = await apiFetch('/api/career-pathway', {
+}
+
+async function postPathway(path: string, params: CareerPathwayParams): Promise<CareerPathwayResult> {
+  const res = await apiFetch(path, {
     ...withCreds,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -214,6 +218,14 @@ export async function fetchCareerPathway(params: {
   if (!res.ok) throw new Error(await readError(res))
   return res.json()
 }
+
+export const fetchCareerPathway = (params: CareerPathwayParams) =>
+  postPathway('/api/career-pathway', params)
+
+/** The same report with the model's summary: the slow part, asked for after
+ *  the facts are already on screen. */
+export const fetchPathwayNarrative = (params: CareerPathwayParams) =>
+  postPathway('/api/career-pathway/narrative', params)
 
 
 // ---------------------------------------------------------------------------

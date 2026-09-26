@@ -295,6 +295,14 @@ async def build_career_pathway(
                 "description": match["description"],
                 "similarity": match["similarity"],
                 "requires_more_training": match["requires_more_training"],
+                # Same rule as the pathway list, so one page never gives
+                # two answers for the same occupation.
+                "readiness": readiness(
+                    current,
+                    Occupation(code=match["soc"], title=match["title"],
+                               job_zone=match.get("job_zone")),
+                    horizon_months,
+                ),
                 "job_zone": match.get("job_zone"),
                 "skill_gaps": match["skill_gaps"],
                 "wage": _wage_dict(match_wage),

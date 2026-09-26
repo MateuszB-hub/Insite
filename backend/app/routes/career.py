@@ -60,6 +60,8 @@ class TransferableRole(BaseModel):
     similarity: float
     #: True when O*NET places this in a higher Job Zone than the current role.
     requires_more_training: bool
+    #: ready / stretch / long-term, the same rule as the pathway list.
+    readiness: str | None = None
     job_zone: int | None = None
     skill_gaps: list[SkillGap] = []
     wage: WageInfo | None = None
