@@ -34,7 +34,7 @@ def pathway(monkeypatch):
     """Patch every outside source; return a function that builds a pathway."""
     cs.clear_pathway_cache()
 
-    async def resolve(source, role):
+    async def resolve(source, role, occupation_code=None):
         return CURRENT, [NEIGHBOUR], source
 
     async def no_market(*args, **kwargs):

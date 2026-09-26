@@ -11,12 +11,15 @@ import {
   ArrowRight,
   Cpu,
   TriangleAlert,
+  CircleHelp,
+  Check,
 } from 'lucide-react'
 import {
   fetchCareerPathway,
   fetchPathwayNarrative,
   type CareerPathwayResult,
   type DataSourceInfo,
+  type OccupationChoice,
   type OccupationInfo,
 } from '../lib/api'
 import { useAuth } from '../auth/AuthContext'
@@ -31,9 +34,20 @@ interface RecentPathway {
   role: string
   industry: string
   horizon: number
+  /** The occupation picked for an ambiguous title, if any. */
+  code?: string
 }
 
-const recentKey = (r: RecentPathway) => `${r.role.toLowerCase()}|${r.industry.toLowerCase()}|${r.horizon}`
+const recentKey = (r: RecentPathway) =>
+  `${r.role.toLowerCase()}|${r.industry.toLowerCase()}|${r.horizon}|${r.code ?? ''}`
+
+/** "1.1M people" -- a sense of how common each reading of a title is. */
+function people(n?: number | null): string | null {
+  if (!n) return null
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M people`
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k people`
+  return `${n} people`
+}
 
 const HORIZONS = [
   { months: 6, label: '6 months' },
@@ -57,6 +71,9 @@ export default function CareerPathway() {
   const [role, setRole] = useState(() => params.get('role') ?? '')
   const [industry, setIndustry] = useState(() => params.get('industry') ?? '')
   const [horizon, setHorizon] = useState(12)
+  //: The occupation picked when a title could mean several jobs. Editing
+  //: the role clears it: a new title needs a new match.
+  const [occupationCode, setOccupationCode] = useState<string | undefined>()
   const { user } = useAuth()
   const [recent, setRecent] = useState<RecentPathway[]>(() => loadRecent<RecentPathway>('pathway', user?.id))
   const [loading, setLoading] = useState(false)
@@ -68,22 +85,24 @@ export default function CareerPathway() {
   const [narrativeError, setNarrativeError] = useState<string | null>(null)
   //: A response that lands after a newer search started must not replace it.
   const requestId = useRef(0)
-  const lastParams = useRef<{ currentRole: string; industry: string; horizonMonths: number } | null>(null)
+  const lastParams = useRef<{ currentRole: string; industry: string; horizonMonths: number; occupationCode?: string } | null>(null)
 
   const submit = async (e?: FormEvent, from?: RecentPathway) => {
     e?.preventDefault()
-    const wanted = from ?? { role: role.trim(), industry: industry.trim(), horizon }
+    const wanted = from ?? { role: role.trim(), industry: industry.trim(), horizon, code: occupationCode }
     if (!wanted.role || loading) return
     if (from) {
       setRole(from.role)
       setIndustry(from.industry)
       setHorizon(from.horizon)
+      setOccupationCode(from.code)
     }
     const id = ++requestId.current
     const params = {
       currentRole: wanted.role,
       industry: wanted.industry,
       horizonMonths: wanted.horizon,
+      occupationCode: wanted.code,
     }
     lastParams.current = params
     setLoading(true)
@@ -147,7 +166,7 @@ export default function CareerPathway() {
             <input
               id="role"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={(e) => { setRole(e.target.value); setOccupationCode(undefined) }}
               placeholder="e.g. Senior Backend Software Engineer"
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
             />
@@ -224,6 +243,16 @@ export default function CareerPathway() {
         <div className="space-y-6">
           <SourceBanner sources={result.data_sources} />
 
+          {result.ambiguous && (result.alternatives?.length ?? 0) > 0 && (
+            <OccupationChooser
+              title={lastParams.current?.currentRole ?? role}
+              shown={{ code: result.current_occupation.code, title: result.current_occupation.title,
+                       employment: null }}
+              alternatives={result.alternatives ?? []}
+              onPick={(code) => submit(undefined, { role: lastParams.current?.currentRole ?? role, industry, horizon, code })}
+            />
+          )}
+
           <AtAGlance result={result} />
 
           {/* Starting point */}
@@ -239,6 +268,13 @@ export default function CareerPathway() {
             </h2>
             {result.current_occupation.wage && (
               <WageLine wage={result.current_occupation.wage} />
+            )}
+            {!result.ambiguous && (result.alternatives?.length ?? 0) > 0 && (
+              <NotYou
+                matchedVia={result.matched_via}
+                alternatives={result.alternatives ?? []}
+                onPick={(code) => submit(undefined, { role: lastParams.current?.currentRole ?? role, industry, horizon, code })}
+              />
             )}
           </section>
 
@@ -324,6 +360,73 @@ function WageLine({ wage, change }: {
       {wage.year && <span className="text-slate-400"> · {wage.year}</span>}
       {wage.source && <span className="text-slate-400"> · {wage.source}</span>}
     </p>
+  )
+}
+
+/**
+ * Mentor: "QA lead can be for multiple types of jobs ... make it ask for a
+ * category." When the data says a title fits several jobs equally well, ask,
+ * most common first -- the pathway below is for the first one until then.
+ */
+function OccupationChooser({ title, shown, alternatives, onPick }: {
+  title: string
+  shown: OccupationChoice
+  alternatives: OccupationChoice[]
+  onPick: (code: string) => void
+}) {
+  return (
+    <section aria-labelledby="which-job" data-testid="occupation-chooser"
+      className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+      <h2 id="which-job" className="font-semibold text-amber-900 flex items-center gap-2">
+        <CircleHelp className="w-5 h-5" /> "{title}" can mean different jobs. Which is closest to yours?
+      </h2>
+      <p className="text-sm text-amber-800 mt-1 mb-3">
+        Showing the first for now. Pick another and the pathway is redone for it.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-amber-500 bg-white text-sm font-medium text-slate-900">
+          <Check className="w-4 h-4 text-amber-600" /> {shown.title}
+        </span>
+        {alternatives.map((a) => (
+          <button key={a.code} type="button" onClick={() => onPick(a.code)}
+            title={a.via ? `Matched through the title "${a.via}"` : undefined}
+            className="px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-sm text-slate-700 hover:border-amber-500 text-left">
+            {a.title}
+            {people(a.employment) && <span className="block text-xs text-slate-500">{people(a.employment)} in the US</span>}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** A quiet "not what you do?" when the match was clear, but not certain. */
+function NotYou({ matchedVia, alternatives, onPick }: {
+  matchedVia?: string | null
+  alternatives: OccupationChoice[]
+  onPick: (code: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-3 text-sm">
+      {matchedVia && <p className="text-xs text-slate-500">Matched by {matchedVia}.</p>}
+      {!open ? (
+        <button type="button" onClick={() => setOpen(true)}
+          className="text-indigo-600 hover:underline text-sm mt-1">
+          Not what you do?
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 mt-2" aria-label="Other occupations">
+          <span className="text-slate-500">Did you mean:</span>
+          {alternatives.map((a) => (
+            <button key={a.code} type="button" onClick={() => onPick(a.code)}
+              className="px-3 py-1 rounded-full border border-slate-300 text-slate-700 hover:border-indigo-400">
+              {a.title}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

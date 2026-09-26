@@ -23,6 +23,9 @@ class CareerPathwayRequest(BaseModel):
     include_narrative: bool = True
     #: Override the synthesis engine for the narrative ("ollama"/"mock"/...).
     provider: str | None = Field(None, max_length=50)
+    #: The occupation the person picked when their title was ambiguous (SOC,
+    #: e.g. "15-1253"). Wins over matching the title.
+    occupation_code: str | None = Field(None, pattern=r"^\d{2}-\d{4}$")
 
 
 class WageInfo(BaseModel):
@@ -120,6 +123,16 @@ class NarrativeInfo(BaseModel):
     provider_label: str
 
 
+class OccupationChoice(BaseModel):
+    code: str
+    title: str
+    description: str = ""
+    #: People employed nationally (BLS OEWS), for "most common first".
+    employment: int | None = None
+    #: The O*NET title that matched, e.g. "Quality Assurance Inspector".
+    via: str | None = None
+
+
 class CareerPathwayResponse(BaseModel):
     current_role: str
     industry: str | None = None
@@ -136,6 +149,13 @@ class CareerPathwayResponse(BaseModel):
     #: unavailable -- the facts above are still valid.
     narrative: NarrativeInfo | None = None
     narrative_status: str = "not requested"
+    #: Other occupations the typed title could mean, best first.
+    alternatives: list[OccupationChoice] = []
+    #: True when the title could mean several jobs equally well and the
+    #: person hasn't picked one yet: the page asks.
+    ambiguous: bool = False
+    #: How the title was matched, e.g. 'known title: "Software Engineer"'.
+    matched_via: str | None = None
 
 
 @router.get("/labor/status", response_model=list[DataSourceInfo])
@@ -157,6 +177,7 @@ async def career_pathway(request: CareerPathwayRequest, user: CurrentUser) -> Ca
             location=request.location,
             include_narrative=request.include_narrative,
             provider_name=request.provider,
+            occupation_code=request.occupation_code,
         )
     except Exception:
         logger.exception("career-pathway request failed")
@@ -185,6 +206,7 @@ async def career_pathway_narrative(
             horizon_months=request.horizon_months,
             location=request.location,
             provider_name=request.provider,
+            occupation_code=request.occupation_code,
         )
     except Exception:
         logger.exception("career-pathway narrative request failed")

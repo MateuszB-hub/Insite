@@ -9,7 +9,9 @@ and skill matching all work offline with no credentials and no startup cost.
 Writes app/data/occupations.json (titles, descriptions, job zone, skills),
 app/data/related.json (O*NET's own relatedness graph) and
 app/data/abbreviations.json (job-title abbreviations learned from O*NET's
-alternate and reported titles, e.g. QA <-> quality assurance).
+alternate and reported titles, e.g. QA <-> quality assurance) and
+app/data/titles.json (every alternate and reported title per occupation, so a
+typed title can be matched to all the occupations it could mean).
 """
 
 import csv
@@ -111,12 +113,26 @@ def main() -> None:
     )
     (OUT / "related.json").write_text(json.dumps(related, indent=0))
 
-    print("  learning title abbreviations…")
-    title_rows = [(r["Alternate Title"], r.get("Short Title") or "")
-                  for r in fetch("Alternate Titles.txt")]
-    title_rows += [(r["Reported Job Title"], "") for r in fetch("Sample of Reported Titles.txt")]
+    print("  fetching alternate and reported titles…")
+    alternate = fetch("Alternate Titles.txt")
+    reported = fetch("Sample of Reported Titles.txt")
+
+    title_rows = [(r["Alternate Title"], r.get("Short Title") or "") for r in alternate]
+    title_rows += [(r["Reported Job Title"], "") for r in reported]
     abbrev = abbreviations.derive(abbreviations.pairs_from_titles(title_rows))
     (OUT / "abbreviations.json").write_text(json.dumps(abbrev, indent=0, sort_keys=True))
+
+    titles: dict[str, dict[str, list[str]]] = {}
+    for kind, rows, col in (("alt", alternate, "Alternate Title"),
+                            ("reported", reported, "Reported Job Title")):
+        for r in rows:
+            soc = base_soc(r["O*NET-SOC Code"])
+            if soc not in by_soc:
+                continue
+            bucket = titles.setdefault(soc, {"alt": [], "reported": []})[kind]
+            if r[col] not in bucket:
+                bucket.append(r[col])
+    (OUT / "titles.json").write_text(json.dumps(titles, indent=0, sort_keys=True))
 
     with_skills = sum(1 for o in occupations if o["skills"])
     with_zone = sum(1 for o in occupations if o["job_zone"])
@@ -126,7 +142,9 @@ def main() -> None:
     print(f"  relatedness graph: {len(related)} sources, "
           f"{sum(len(v) for v in related.values())} edges")
     print(f"  abbreviations    : {len(abbrev)}")
-    for f in ("occupations.json", "related.json", "abbreviations.json"):
+    print(f"  titles           : {sum(len(t['alt']) + len(t['reported']) for t in titles.values())}"
+          f" across {len(titles)} occupations")
+    for f in ("occupations.json", "related.json", "abbreviations.json", "titles.json"):
         print(f"  {f:22} {(OUT / f).stat().st_size:>9,} bytes")
 
 

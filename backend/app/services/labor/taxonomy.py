@@ -61,6 +61,12 @@ _ALIASES: dict[str, str] = {
 
 
 _RELATED_DATA = _DATA.parent / "related.json"
+_TITLES_DATA = _DATA.parent / "titles.json"
+_EMPLOYMENT_DATA = _DATA.parent / "employment.json"
+
+#: Military occupations match many generic words ("technician", "analyst");
+#: they are offered only when the title says it is military.
+_MILITARY = {"military", "army", "navy", "marine", "soldier", "sailor", "airman", "enlisted"}
 
 
 @lru_cache(maxsize=1)
@@ -117,44 +123,155 @@ def all_occupations() -> list[dict]:
     return _occupations()
 
 
-def resolve(title: str) -> dict | None:
-    """Best occupation for a free-text job title, or None if nothing fits."""
+@lru_cache(maxsize=1)
+def _titles() -> dict[str, dict[str, list[str]]]:
+    try:
+        with _TITLES_DATA.open() as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+@lru_cache(maxsize=1)
+def _employment() -> dict[str, int]:
+    try:
+        with _EMPLOYMENT_DATA.open() as f:
+            return json.load(f).get("by_soc", {})
+    except FileNotFoundError:
+        return {}
+
+
+def employment(code: str) -> int | None:
+    """National employment for an occupation (BLS OEWS), if known."""
+    return _employment().get(code)
+
+
+_PAREN = re.compile(r"^(?P<outer>[^()]+?)\s*\((?P<inner>[^()]+)\)\s*$")
+
+
+@lru_cache(maxsize=1)
+def _title_index() -> tuple[list[tuple[str, str, str, frozenset]], dict[str, list[int]]]:
+    """Every known title as (soc, kind, title, tokens), plus word -> rows.
+
+    kind is "official" (the occupation's own title), "reported" (titles
+    workers report most) or "alternate". "Quality Assurance Analyst (QA
+    Analyst)" is indexed as both of its forms.
+    """
+    rows: list[tuple[str, str, str, frozenset]] = []
+    for occ in _occupations():
+        rows.append((occ["soc"], "official", occ["title"], frozenset(_tokens(occ["title"]))))
+    for soc, kinds in _titles().items():
+        for kind, key in (("reported", "reported"), ("alternate", "alt")):
+            for title in kinds.get(key, []):
+                m = _PAREN.match(title)
+                for form in ((m.group("outer"), m.group("inner")) if m else (title,)):
+                    toks = frozenset(_tokens(form))
+                    if toks:
+                        rows.append((soc, kind, form.strip(), toks))
+    index: dict[str, list[int]] = {}
+    for i, (_, _, _, toks) in enumerate(rows):
+        for tok in toks:
+            index.setdefault(tok, []).append(i)
+    return rows, index
+
+
+#: How a title matched, strongest first.
+_TIER_NAMES = {3: "official title", 2: "known title", 1: "similar title"}
+
+
+def candidates(title: str, limit: int = 5) -> list[dict]:
+    """Every occupation a typed title could mean, best first.
+
+    An occupation's score is its best-matching title: the occupation's own
+    title exactly (tier 3), one of O*NET's alternate or reported titles
+    exactly, or a hand-kept alias (tier 2), else the closest wording (tier 1,
+    word overlap). Abbreviations count ("QA" -> "quality assurance") and
+    seniority words don't ("QA lead" is matched as "QA"). Among exact
+    matches, ties go to the occupation more people work in (BLS national
+    employment). Among similar-wording matches, they go first to the
+    occupation the words are most characteristic of -- how many of its titles
+    contain them all (Software QA has five "Quality Assurance ..." titles; a
+    catch-all "All Other" group has one).
+    """
     if not title or not title.strip():
-        return None
+        return []
+    from app.services.labor import abbreviations  # avoid an import cycle at load
 
     cleaned = title.lower().strip()
+    rows, index = _title_index()
+    best: dict[str, tuple[int, float, str]] = {}
+    support: dict[str, int] = {}
 
-    exact = _by_title().get(cleaned)
-    if exact:
-        return exact
+    def offer(soc: str, tier: int, score: float, via: str) -> None:
+        if (tier, score) > best.get(soc, (0, 0.0, ""))[:2]:
+            best[soc] = (tier, score, via)
 
-    # Longest alias wins, so "data scientist" beats a bare "data".
-    for alias in sorted(_ALIASES, key=len, reverse=True):
-        if alias in cleaned:
-            hit = _by_code().get(_ALIASES[alias])
-            if hit:
-                return hit
+    for alias, soc in _ALIASES.items():
+        if re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", cleaned):
+            offer(soc, 2, 1.0, alias)
 
-    wanted = _tokens(cleaned)
-    if not wanted:
-        return None
-
-    best, best_score = None, 0.0
-    for occ in _occupations():
-        have = _tokens(occ["title"])
-        if not have:
+    military = False
+    for form in [cleaned, *abbreviations.variants(cleaned)]:
+        wanted = _tokens(form)
+        if not wanted:
             continue
-        overlap = wanted & have
-        if not overlap:
-            continue
-        # Reward covering the query and the candidate title alike, so
-        # "Nurse Practitioners" does not beat "Registered Nurses" for "nurse".
-        score = (len(overlap) / len(wanted)) * (len(overlap) / len(have))
-        if score > best_score:
-            best, best_score = occ, score
+        military = military or bool(wanted & _MILITARY)
+        seen: set[int] = set()
+        for tok in wanted:
+            seen.update(index.get(tok, ()))
+        for i in seen:
+            soc, kind, text, have = rows[i]
+            overlap = wanted & have
+            if wanted <= have:
+                support[soc] = support.get(soc, 0) + 1
+            if have == wanted:
+                offer(soc, 3 if kind == "official" else 2, 1.0, text)
+            else:
+                # Reward covering the query and the candidate title alike, so
+                # "Nurse Practitioners" does not beat "Registered Nurses".
+                score = (len(overlap) / len(wanted)) * (len(overlap) / len(have))
+                if score >= 0.30:
+                    offer(soc, 1, score, text)
 
-    # Floor: a single incidental word in common is not a match.
-    return best if best_score >= 0.30 else None
+    ranked = []
+    for soc, (tier, score, via) in best.items():
+        occ = _by_code().get(soc)
+        if occ is None or (soc.startswith("55-") and not military):
+            continue
+        ranked.append((tier, round(score, 2), support.get(soc, 0), employment(soc) or 0, soc, via, occ))
+    # How characteristic the words are only decides among similar-wording
+    # matches; when several occupations list the exact title, the one more
+    # people do comes first ("project manager": Project Management
+    # Specialists, not "Computer Occupations, All Other" with its many
+    # "Software Project Manager"-style titles).
+    ranked.sort(key=lambda r: (-r[0], -r[1], -(r[2] if r[0] == 1 else 0), -r[3], r[4]))
+
+    return [
+        {**occ, "tier": tier, "score": score, "match": _TIER_NAMES[tier], "via": via,
+         "employment": emp or None}
+        for tier, score, _, emp, soc, via, occ in ranked[:limit]
+    ]
+
+
+def is_ambiguous(found: list[dict]) -> bool:
+    """Could the title mean more than one job, as far as the data can tell?
+
+    Yes when two or more occupations match equally well -- the same exact
+    title listed under both ("account manager"), or equally close wording --
+    unless the top one is the occupation's own official title.
+    """
+    if len(found) < 2 or found[0]["tier"] == 3:
+        return False
+    top = found[0]
+    peers = [c for c in found
+             if c["tier"] == top["tier"] and (top["tier"] >= 2 or c["score"] >= top["score"] - 0.05)]
+    return len(peers) >= 2
+
+
+def resolve(title: str) -> dict | None:
+    """Best occupation for a free-text job title, or None if nothing fits."""
+    found = candidates(title, limit=1)
+    return found[0] if found else None
 
 
 def related(code: str, limit: int = 8) -> list[dict]:

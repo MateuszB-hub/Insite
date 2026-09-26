@@ -55,7 +55,9 @@ def test_singular_and_plural_both_match():
 
 def test_nonsense_returns_none_rather_than_a_wrong_guess():
     """A confidently wrong SOC code is worse than admitting no match."""
-    assert taxonomy.resolve("Underwater Basket Weaver") is None
+    # (Not "Underwater Basket Weaver": O*NET really lists "Basket Weaver", so
+    # that now matches as a labelled similar title.)
+    assert taxonomy.resolve("Xyzzy Frobnicator") is None
     assert taxonomy.resolve("") is None
     assert taxonomy.resolve("   ") is None
 

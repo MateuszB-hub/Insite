@@ -98,6 +98,29 @@ await page.goto(`${BASE}/pathway`, { waitUntil: 'networkidle' })
 const body = await page.locator('body').innerText()
 check('the horizon is explained', body.includes('How soon do you want to move?') && !body.includes('Looking ahead'))
 
+// 10. an ambiguous title asks which job is meant
+await page.goto(`${BASE}/pathway`, { waitUntil: 'networkidle' })
+await page.fill('#role', 'QA lead')
+await page.getByRole('button', { name: 'Map pathway' }).click()
+await page.waitForSelector('text=Roles you could move into', { timeout: 60000 })
+const chooser = await page.locator('[data-testid="occupation-chooser"]').innerText().catch(() => '')
+check('"QA lead" asks which job is meant', /can mean different jobs/.test(chooser))
+check('software QA and materials inspection both offered',
+  /Software Quality Assurance/.test(chooser) && /Inspectors/.test(chooser))
+await page.screenshot({ path: `${OUT}/3-which-qa.png`, fullPage: false })
+await page.locator('[data-testid="occupation-chooser"] button', { hasText: 'Inspectors' }).first().click()
+await page.waitForFunction(() => document.body.innerText.includes('Inspectors, Testers'), null, { timeout: 60000 })
+await page.waitForSelector('text=Roles you could move into', { timeout: 60000 })
+const starting = await page.locator('section', { hasText: 'Starting from' }).first().innerText()
+check('picking one redoes the pathway for it', /Inspectors, Testers/.test(starting), starting.split('\n')[1] ?? '')
+check('once picked, it stops asking', (await page.locator('[data-testid="occupation-chooser"]').count()) === 0)
+
+await page.fill('#role', 'registered nurse')
+await page.getByRole('button', { name: 'Map pathway' }).click()
+await page.waitForSelector('text=Roles you could move into', { timeout: 60000 })
+check('a clear title does not ask', (await page.locator('[data-testid="occupation-chooser"]').count()) === 0)
+check('but still offers "Not what you do?"', (await page.getByRole('button', { name: 'Not what you do?' }).count()) === 1)
+
 // 6. deleting says it deletes your data
 await page.goto(`${BASE}/profile`, { waitUntil: 'networkidle' })
 await page.getByRole('button', { name: 'Delete my account and data' }).click()
