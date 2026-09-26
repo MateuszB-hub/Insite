@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.auth.deps import CurrentUser
-from app.services.job_search import MAX_LOCATIONS, normalize_locations, search_jobs
+from app.services.job_search import JOB_TYPES, MAX_LOCATIONS, normalize_locations, search_jobs
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -20,6 +20,9 @@ class JobOut(BaseModel):
     url: str
     created: str | None = None
     contract_time: str | None = None
+    contract_type: str | None = None
+    #: What the advert states: full_time / part_time / contract / permanent.
+    job_types: list[str] = []
     salary_min: float | None = None
     salary_max: float | None = None
     #: "stated" (employer said so) | "estimated" (aggregator guessed) | "absent"
@@ -57,6 +60,11 @@ class JobSearchResponse(BaseModel):
     pages_fetched: int = 0
     #: Places whose lookup failed; results for the others are still shown.
     failed_locations: list[str] = []
+    #: Job-type filter: adverts that didn't say their type / said another.
+    excluded_type_unstated: int = 0
+    excluded_other_type: int = 0
+    #: "phrase" (whole query kept together) or "words".
+    match: str = "words"
 
 
 @router.get("/jobs/search", response_model=JobSearchResponse)
@@ -72,6 +80,9 @@ async def job_search(
     # Adverts older than about a week are usually already filled (tester
     # feedback); the UI defaults to 7. Omit for any age.
     max_days_old: int | None = Query(None, ge=1, le=365),
+    # full_time | part_time | contract | permanent. Filtered on what adverts
+    # state; the ones that don't say are counted, not hidden silently.
+    job_type: str | None = Query(None),
     limit: int = Query(30, ge=1, le=50),
 ):
     """Search postings, keeping every provenance signal intact.
@@ -85,6 +96,8 @@ async def job_search(
     if len({p.strip().lower() for p in where if p.strip()}) > MAX_LOCATIONS:
         raise HTTPException(422, f"Search up to {MAX_LOCATIONS} locations at a time.")
     places = normalize_locations(where)
+    if job_type is not None and job_type not in JOB_TYPES:
+        raise HTTPException(422, f"job_type must be one of: {', '.join(JOB_TYPES)}.")
 
     try:
         result = await search_jobs(
@@ -94,6 +107,7 @@ async def job_search(
             remote_only=remote_only,
             include_conflicted_remote=include_conflicted_remote,
             max_days_old=max_days_old,
+            job_type=job_type,
             limit=limit,
         )
     except RuntimeError as exc:
@@ -114,4 +128,7 @@ async def job_search(
         collapsed_duplicates=result.collapsed_duplicates,
         locations_searched=result.locations_searched,
         failed_locations=result.failed_locations,
+        excluded_type_unstated=result.excluded_type_unstated,
+        excluded_other_type=result.excluded_other_type,
+        match=result.match,
     )

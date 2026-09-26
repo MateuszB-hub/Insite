@@ -25,6 +25,7 @@ import hashlib
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from itertools import chain, zip_longest
@@ -119,6 +120,8 @@ class JobPosting:
     created: str | None = None
     description: str = ""
     contract_time: str | None = None
+    #: Adzuna's other type field: "permanent" | "contract" | None.
+    contract_type: str | None = None
 
     salary_min: float | None = None
     salary_max: float | None = None
@@ -145,6 +148,8 @@ class JobPosting:
             "id": self.id, "title": self.title, "company": self.company,
             "location": self.location, "url": self.url, "created": self.created,
             "contract_time": self.contract_time,
+            "contract_type": self.contract_type,
+            "job_types": sorted(job_types(self)),
             "salary_min": self.salary_min, "salary_max": self.salary_max,
             "salary_source": self.salary_source.value,
             "remote_claim": self.remote_claim.value,
@@ -175,6 +180,12 @@ class SearchResult:
     #: from employer-stated matches so the two are never confused.
     estimated_matches: list["JobPosting"] = field(default_factory=list)
     pages_fetched: int = 0
+    #: Job-type filter: adverts that didn't state a type / stated another.
+    excluded_type_unstated: int = 0
+    excluded_other_type: int = 0
+    #: "phrase" when the whole query was matched as a phrase; "words" when it
+    #: was matched word by word (one-word queries, or too few phrase hits).
+    match: str = "words"
 
 
 def classify_salary(raw: dict[str, Any]) -> SalarySource:
@@ -215,6 +226,31 @@ def classify_remote(raw: dict[str, Any]) -> tuple[RemoteClaim, str | None]:
     )
 
 
+#: The job-type filter's choices.
+JOB_TYPES = ("full_time", "part_time", "contract", "permanent")
+
+#: A title that says it plainly ("QA Lead (W2 Contract)", "C2C", "1099").
+#: Titles only: descriptions mention "contract" in too many other senses.
+_CONTRACT_IN_TITLE = re.compile(r"\b(contract(or)?|c2c|corp[- ]to[- ]corp|1099)\b", re.I)
+
+
+def job_types(posting: "JobPosting") -> set[str]:
+    """The types a posting states, from Adzuna's two fields and its title.
+
+    Most adverts state neither (116 "QA lead" adverts: 34 said full-time,
+    8 contract), so an empty set means "didn't say", never "not this type".
+    Full-time and contract can both be true: a full-time contract role.
+    """
+    types: set[str] = set()
+    if posting.contract_time in ("full_time", "part_time"):
+        types.add(posting.contract_time)
+    if posting.contract_type in ("contract", "permanent"):
+        types.add(posting.contract_type)
+    if _CONTRACT_IN_TITLE.search(posting.title or ""):
+        types.add("contract")
+    return types
+
+
 def to_posting(raw: dict[str, Any]) -> JobPosting:
     claim, note = classify_remote(raw)
     return JobPosting(
@@ -227,6 +263,7 @@ def to_posting(raw: dict[str, Any]) -> JobPosting:
         created=raw.get("created"),
         description=(raw.get("description") or "")[:600],
         contract_time=raw.get("contract_time"),
+        contract_type=raw.get("contract_type"),
         salary_min=raw.get("salary_min"),
         salary_max=raw.get("salary_max"),
         salary_source=classify_salary(raw),
@@ -343,6 +380,21 @@ def _interleave(pages: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
 #: page is one Adzuna request, and the free tier is rate-limited.
 MAX_PAGES = 3
 
+#: Fewer phrase hits than this, across all places, and the words are matched
+#: instead.
+PHRASE_MIN_RESULTS = 5
+
+#: Identical searches within this window reuse the result: the tester asked
+#: for previous searches to be remembered, and every search spends Adzuna
+#: quota. Wall-clock, in-process, small -- like the pathway cache.
+SEARCH_CACHE_TTL = float(os.getenv("JOB_SEARCH_CACHE_TTL", "900"))
+SEARCH_CACHE_MAX = 64
+_search_cache: dict[tuple, tuple[float, "SearchResult"]] = {}
+
+
+def clear_search_cache() -> None:
+    _search_cache.clear()
+
 
 @dataclass
 class _Filtered:
@@ -352,6 +404,8 @@ class _Filtered:
     excluded_no_salary: int = 0
     excluded_not_remote: int = 0
     excluded_below_salary: int = 0
+    excluded_type_unstated: int = 0
+    excluded_other_type: int = 0
 
 
 def _apply_filters(
@@ -362,12 +416,22 @@ def _apply_filters(
     remote_only: bool,
     include_conflicted_remote: bool,
     limit: int,
+    job_type: str | None = None,
 ) -> _Filtered:
     """Sort candidates into shown / shown-as-estimated / excluded (counted)."""
     out = _Filtered()
     for posting in candidates:
         if len(out.kept) >= limit and len(out.estimated) >= limit:
             break
+
+        if job_type:
+            types = job_types(posting)
+            if not types:
+                out.excluded_type_unstated += 1
+                continue
+            if job_type not in types:
+                out.excluded_other_type += 1
+                continue
 
         if remote_only:
             allowed = {RemoteClaim.remote}
@@ -419,6 +483,7 @@ async def search_jobs(
     include_conflicted_remote: bool = False,
     collapse_duplicates: bool = True,
     max_days_old: int | None = None,
+    job_type: str | None = None,
     limit: int = 30,
 ) -> SearchResult:
     """Search postings and apply filters that never fabricate certainty.
@@ -433,11 +498,27 @@ async def search_jobs(
     app_key = os.getenv("ADZUNA_APP_KEY", "")
     if not (app_id and app_key):
         raise RuntimeError("ADZUNA_APP_ID / ADZUNA_APP_KEY not set")
+    if job_type is not None and job_type not in JOB_TYPES:
+        raise ValueError(f"unknown job type {job_type!r}")
+
+    places = normalize_locations(locations)
+    cache_key = (
+        " ".join(query.lower().split()), tuple(p.lower() for p in places), salary_min,
+        require_stated_salary, remote_only, include_conflicted_remote,
+        collapse_duplicates, max_days_old, job_type, limit,
+    )
+    cached = _search_cache.get(cache_key)
+    if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
+        return cached[1]
 
     per_page = min(50, max(limit * 2, 20))
+    # Tester: "QA lead" matched word by word found "lead" jobs with no QA in
+    # them. Adzuna's what_phrase keeps the words together (653 -> 116 adverts
+    # in a week, all QA leads); a one-word query is the same either way.
+    phrase = len(query.split()) >= 2
     base: dict[str, Any] = {
         "app_id": app_id, "app_key": app_key,
-        "what": query,
+        "what_phrase" if phrase else "what": query,
         # Ask for more than we need: honest filtering discards a lot.
         "results_per_page": per_page,
     }
@@ -448,7 +529,6 @@ async def search_jobs(
         base["salary_min"] = int(salary_min)
     if max_days_old is not None:
         base["max_days_old"] = max_days_old
-    places = normalize_locations(locations)
     targets: list[str | None] = list(places) or [None]
 
     async def fetch(client: httpx.AsyncClient, place: str | None, page: int) -> dict[str, Any]:
@@ -459,7 +539,7 @@ async def search_jobs(
         response.raise_for_status()
         return response.json()
 
-    result = SearchResult(locations_searched=places)
+    result = SearchResult(locations_searched=places, match="phrase" if phrase else "words")
     #: Raw adverts per place, in page order.
     pages: dict[str | None, list[dict[str, Any]]] = {}
     counts: dict[str | None, int] = {}
@@ -475,9 +555,12 @@ async def search_jobs(
         return _apply_filters(
             postings, salary_min=salary_min, require_stated_salary=require_stated_salary,
             remote_only=remote_only, include_conflicted_remote=include_conflicted_remote,
-            limit=limit)
+            limit=limit, job_type=job_type)
 
-    async with httpx.AsyncClient(timeout=40.0) as client:
+    async def first_pages(client: httpx.AsyncClient) -> None:
+        pages.clear()
+        counts.clear()
+        result.failed_locations = []
         outcomes = await asyncio.gather(
             *(fetch(client, t, 1) for t in targets), return_exceptions=True)
         for target, outcome in zip(targets, outcomes):
@@ -490,11 +573,22 @@ async def search_jobs(
             counts[target] = outcome.get("count") or 0
         if not pages:
             raise next(o for o in outcomes if isinstance(o, BaseException))
+
+    async with httpx.AsyncClient(timeout=40.0) as client:
+        await first_pages(client)
+        # A phrase nobody uses word for word ("backend dev lead") would come
+        # back nearly empty; then match the words instead, and say so.
+        if phrase and sum(counts.values()) < PHRASE_MIN_RESULTS:
+            base.pop("what_phrase")
+            base["what"] = query
+            result.match = "words"
+            await first_pages(client)
         result.pages_fetched = 1
 
         # Filters that discard most adverts get another page or two, but only
         # while places still have more to give.
-        filtering = salary_min is not None or require_stated_salary or remote_only
+        filtering = (salary_min is not None or require_stated_salary or remote_only
+                     or job_type is not None)
         for page in range(2, MAX_PAGES + 1):
             if not filtering or len(filtered(build()).kept) >= limit:
                 break
@@ -533,4 +627,10 @@ async def search_jobs(
     result.excluded_no_salary = out.excluded_no_salary
     result.excluded_not_remote = out.excluded_not_remote
     result.excluded_below_salary = out.excluded_below_salary
+    result.excluded_type_unstated = out.excluded_type_unstated
+    result.excluded_other_type = out.excluded_other_type
+
+    if len(_search_cache) >= SEARCH_CACHE_MAX:
+        _search_cache.pop(next(iter(_search_cache)), None)
+    _search_cache[cache_key] = (time.time(), result)
     return result
