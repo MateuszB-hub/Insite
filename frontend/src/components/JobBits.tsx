@@ -42,9 +42,14 @@ export function SalaryLine({ job }: { job: JobPosting }) {
 /** How old the advert says it is. Past a week it is often already filled. */
 export function PostedAgo({ created }: { created?: string | null }) {
   if (!created) return null
-  const days = Math.floor((Date.now() - new Date(created).getTime()) / 86_400_000)
+  const ms = Date.now() - new Date(created).getTime()
+  const days = Math.floor(ms / 86_400_000)
   if (Number.isNaN(days) || days < 0) return null
-  const label = days === 0 ? 'Posted today' : days === 1 ? 'Posted yesterday' : `Posted ${days} days ago`
+  const hours = Math.floor(ms / 3_600_000)
+  // Under a day, hours matter: that's what "Past 24 hours" is for.
+  const label = hours < 1 ? 'Posted within the hour'
+    : hours < 24 ? `Posted ${hours} hour${hours === 1 ? '' : 's'} ago`
+    : days === 1 ? 'Posted yesterday' : `Posted ${days} days ago`
   return (
     <span className={`inline-flex items-center gap-1 ${days > 7 ? 'text-amber-700' : ''}`}
       title={days > 7 ? 'Older adverts are often already filled.' : undefined}>

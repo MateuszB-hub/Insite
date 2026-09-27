@@ -20,12 +20,44 @@ import {
 } from '../lib/api'
 import { PostedAgo, SalaryLine } from './JobBits'
 
+//: Like the big job sites. Values are days ('' = any time), plus a custom
+//: "posted on or after" date. Default a week: testers found older adverts are
+//: usually already filled.
 const AGE_CHOICES = [
-  { value: '7', label: 'Past 7 days' },
-  { value: '14', label: 'Past 14 days' },
-  { value: '30', label: 'Past 30 days' },
+  { value: '1', label: 'Past 24 hours' },
+  { value: '3', label: 'Past 3 days' },
+  { value: '7', label: 'Past week' },
+  { value: '14', label: 'Past 2 weeks' },
+  { value: '30', label: 'Past month' },
   { value: '', label: 'Any time' },
+  { value: 'custom', label: 'Custom date…' },
 ]
+
+const SORT_CHOICES = [
+  { value: 'relevance', label: 'Best match' },
+  { value: 'date', label: 'Newest first' },
+] as const
+
+type Sort = (typeof SORT_CHOICES)[number]['value']
+
+/** YYYY-MM-DD for a date input, in the viewer's own time zone. */
+const isoDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/**
+ * The exact cut-off to send. Presets count back from now, rounded down to
+ * the hour so repeat searches reuse the server's cache; a custom date means
+ * the start of that day where the viewer is.
+ */
+function postedAfter(posted: string, since: string): string | undefined {
+  if (posted === 'custom') {
+    return since ? new Date(`${since}T00:00:00`).toISOString() : undefined
+  }
+  if (!posted) return undefined
+  const cut = new Date(Date.now() - Number(posted) * 86_400_000)
+  cut.setMinutes(0, 0, 0)
+  return cut.toISOString()
+}
 
 const TYPE_CHOICES: { value: JobType | ''; label: string }[] = [
   { value: '', label: 'Any type' },
@@ -36,10 +68,18 @@ interface RecentSearch {
   q: string
   places: string[]
   jobType: JobType | ''
+  /** Date posted choice and custom date; older entries lack them. */
+  posted?: string
+  since?: string
+  sort?: Sort
 }
 
 const recentKey = (r: RecentSearch) =>
-  `${r.q.toLowerCase()}|${r.places.join(',').toLowerCase()}|${r.jobType}`
+  `${r.q.toLowerCase()}|${r.places.join(',').toLowerCase()}|${r.jobType}|${r.posted ?? '7'}|${r.since ?? ''}|${r.sort ?? 'relevance'}`
+
+const ageLabel = (r: RecentSearch) =>
+  r.posted === 'custom' ? (r.since ? `since ${r.since}` : '')
+    : AGE_CHOICES.find((c) => c.value === (r.posted ?? '7'))?.label ?? ''
 
 /** The site a link opens, so a job board is never mistaken for the employer. */
 function siteOf(url: string): string {
@@ -62,6 +102,9 @@ export default function JobSearch() {
   const [salaryMin, setSalaryMin] = useState('')
   //: Default a week: testers found older adverts are usually already filled.
   const [maxDaysOld, setMaxDaysOld] = useState('7')
+  //: "Custom date…": posted on or after this day (YYYY-MM-DD).
+  const [since, setSince] = useState(() => isoDay(new Date(Date.now() - 14 * 86_400_000)))
+  const [sort, setSort] = useState<Sort>('relevance')
   const [requireStated, setRequireStated] = useState(false)
   const [remoteOnly, setRemoteOnly] = useState(false)
   const [includeConflicted, setIncludeConflicted] = useState(false)
@@ -132,7 +175,12 @@ export default function JobSearch() {
     setPlaceDraft('')
   }
 
-  const runSearch = async (query: string, where: string[], type: JobType | '' = jobType) => {
+  const runSearch = async (
+    query: string,
+    where: string[],
+    type: JobType | '' = jobType,
+    when: { posted: string; since: string; sort: Sort } = { posted: maxDaysOld, since, sort },
+  ) => {
     setLoading(true)
     setError(null)
     try {
@@ -141,12 +189,15 @@ export default function JobSearch() {
         where,
         jobType: type || undefined,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
-        maxDaysOld: maxDaysOld ? Number(maxDaysOld) : undefined,
+        postedAfter: postedAfter(when.posted, when.since),
+        sort: when.sort,
         requireStatedSalary: requireStated,
         remoteOnly,
         includeConflictedRemote: includeConflicted,
       }))
-      setRecent(saveRecent('jobs', user?.id, { q: query, places: where, jobType: type }, recentKey))
+      setRecent(saveRecent('jobs', user?.id,
+        { q: query, places: where, jobType: type, posted: when.posted, since: when.since, sort: when.sort },
+        recentKey))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed')
     } finally {
@@ -169,8 +220,12 @@ export default function JobSearch() {
     setPlaces(r.places)
     setPlaceDraft('')
     setJobType(r.jobType)
+    const when = { posted: r.posted ?? '7', since: r.since ?? since, sort: r.sort ?? 'relevance' }
+    setMaxDaysOld(when.posted)
+    setSince(when.since)
+    setSort(when.sort)
     setFromProfile(false)
-    void runSearch(r.q, r.places, r.jobType)
+    void runSearch(r.q, r.places, r.jobType, when)
   }
 
   // Arriving with ?q= (from Home) runs that search once, with the defaults.
@@ -283,7 +338,7 @@ export default function JobSearch() {
   const excluded = data
     ? data.excluded_estimated_salary + data.excluded_no_salary +
       data.excluded_not_remote + data.excluded_below_salary +
-      (data.excluded_type_unstated ?? 0) + (data.excluded_other_type ?? 0)
+      (data.excluded_type_unstated ?? 0) + (data.excluded_other_type ?? 0) + (data.excluded_too_old ?? 0)
     : 0
   const multiWord = q.trim().split(/\s+/).length >= 2
   const loose = data?.loose_matches ?? []
@@ -366,10 +421,26 @@ export default function JobSearch() {
 
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
           <label className="flex items-center gap-2 text-sm text-slate-700">
-            Posted
+            Date posted
             <select id="age" value={maxDaysOld} onChange={(e) => setMaxDaysOld(e.target.value)}
               className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none">
               {AGE_CHOICES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </label>
+          {maxDaysOld === 'custom' && (
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              On or after
+              <input id="since" type="date" value={since}
+                min={isoDay(new Date(Date.now() - 365 * 86_400_000))} max={isoDay(new Date())}
+                onChange={(e) => setSince(e.target.value)}
+                className="rounded-lg border border-slate-300 text-sm py-1 px-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </label>
+          )}
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            Sort
+            <select id="sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)}
+              className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none">
+              {SORT_CHOICES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -414,6 +485,7 @@ export default function JobSearch() {
             <button key={recentKey(r)} type="button" onClick={() => rerun(r)}
               className="px-3 py-1 rounded-full border border-slate-300 bg-white text-slate-700 hover:border-indigo-400">
               {r.q}{r.places.length ? ` · ${r.places.join(', ')}` : ''}{r.jobType ? ` · ${JOB_TYPE_LABELS[r.jobType]}` : ''}
+              {ageLabel(r) ? ` · ${ageLabel(r)}` : ''}{r.sort === 'date' ? ' · newest first' : ''}
             </button>
           ))}
         </div>
@@ -483,13 +555,17 @@ export default function JobSearch() {
                 {(data.excluded_other_type ?? 0) > 0 && (
                   <li>{data.excluded_other_type} were a different type</li>
                 )}
+                {(data.excluded_too_old ?? 0) > 0 && (
+                  <li>{data.excluded_too_old} were posted before the date you chose (the job board's own
+                    date filter only works in whole days)</li>
+                )}
               </ul>
             </div>
           )}
 
           {data.postings.length === 0 && data.estimated_matches.length === 0 && !loose.length ? (
             <p className="text-center text-slate-500 py-16">
-              Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Posted"' : ''}.
+              Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Date posted"' : ''}.
             </p>
           ) : (
             <>

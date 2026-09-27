@@ -14,7 +14,8 @@
     "demo:reset": "node e2e/reset-demo.mjs",
     "demo:home": "node e2e/home-demo.mjs",
     "demo:mentor": "node e2e/mentor-demo.mjs",
-    "demo:resume": "node e2e/resume-demo.mjs"
+    "demo:resume": "node e2e/resume-demo.mjs",
+    "demo:dates": "node e2e/dates-demo.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.510.0",

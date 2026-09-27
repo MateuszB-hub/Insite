@@ -499,3 +499,52 @@ def test_a_lasting_failure_is_logged_with_its_reason(monkeypatch, caplog):
     assert result.failed_locations == ["Denver"]
     assert "500 Internal Server Error" in caplog.text
     assert "app_key" not in caplog.text
+
+
+
+# --- date posted: exact cut-off, and newest first ----------------------------
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+
+def _dated(word, hours_old, city="US"):
+    created = (datetime.now(timezone.utc) - timedelta(hours=hours_old)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return posting(id=f"{city}-{word}", title=f"Engineer {word}", description=f"Advert {word}.",
+                   created=created, location={"display_name": city})
+
+
+def test_past_24_hours_is_exact_though_the_board_filters_by_day(monkeypatch):
+    requests = []
+    # The board's "1 day" returned adverts up to 28.6 hours old, live.
+    _fake_adzuna(monkeypatch, {None: [_dated("alpha", 3), _dated("bravo", 20), _dated("charlie", 28)]},
+                 count=3, requests=requests)
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    result = asyncio.run(search_jobs("engineer", posted_after=since, strategy="words"))
+    assert requests[0]["max_days_old"] == "1"
+    assert [p.id for p in result.postings] == ["US-alpha", "US-bravo"]
+    assert result.excluded_too_old == 1
+
+
+def test_a_custom_date_asks_for_enough_whole_days(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: []}, count=0, requests=requests)
+    since = datetime.now(timezone.utc) - timedelta(days=9, hours=5)
+    asyncio.run(search_jobs("engineer", posted_after=since, strategy="words"))
+    assert requests[0]["max_days_old"] == "10"
+
+
+def test_newest_first_across_every_place(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {
+        "Austin": [_dated("alpha", 50, "Austin"), _dated("bravo", 2, "Austin")],
+        "Denver": [_dated("charlie", 10, "Denver"), _dated("delta", 1, "Denver")],
+    }, requests=requests)
+    result = asyncio.run(search_jobs("engineer", ["Austin", "Denver"], sort="date", strategy="words"))
+    assert all(r["sort_by"] == "date" for r in requests)
+    assert [p.id for p in result.postings] == ["Denver-delta", "Austin-bravo", "Denver-charlie", "Austin-alpha"]
+
+
+def test_unknown_sort_is_refused(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: []}, count=0)
+    with pytest.raises(ValueError):
+        asyncio.run(search_jobs("engineer", sort="salary"))
