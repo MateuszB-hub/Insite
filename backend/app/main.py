@@ -98,6 +98,23 @@ if SERVE_STATIC:
     # Hashed asset filenames, so they can be cached hard.
     app.mount("/assets", StaticFiles(directory=_DIST / "assets"), name="assets")
 
+    @app.middleware("http")
+    async def cache_policy(request, call_next):
+        """Assets forever; the page shell never without asking.
+
+        With no header, browsers kept an old index.html after a deploy, so the
+        old code ran against the new API ("Cannot read properties of undefined
+        (reading 'current_role')" once résumé upload changed shape). A new
+        build's asset names differ, so caching those hard is safe.
+        """
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif not path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
         """Serve index.html for client-side routes.
