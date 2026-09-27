@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.auth.deps import CurrentUser
+from app.services import places as place_check
 from app.services.job_search import JOB_TYPES, MAX_LOCATIONS, SORTS, normalize_locations, search_jobs
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,19 @@ class JobOut(BaseModel):
     is_repost: bool = False
 
 
+class PlaceCheck(BaseModel):
+    #: What was typed.
+    input: str
+    #: ok | ambiguous | state | unknown | invalid
+    status: str
+    #: What was searched, e.g. "Austin, TX" (none for unknown / invalid).
+    place: str | None = None
+    #: Other places with the same name, largest first ("Springfield, IL").
+    alternatives: list[str] = []
+    #: For an unknown place: did you mean ("New York, NY" for "new yotrk").
+    suggestions: list[str] = []
+
+
 class JobSearchResponse(BaseModel):
     postings: list[JobOut]
     total_available: int | None = None
@@ -70,6 +84,9 @@ class JobSearchResponse(BaseModel):
     loose_matches: list[JobOut] = []
     #: Older than posted_after by their own date (the board filters by day).
     excluded_too_old: int = 0
+    #: How each typed location was understood. Unknown and invalid ones were
+    #: not searched -- the board would otherwise guess ("3" -> Puerto Rico).
+    place_checks: list[PlaceCheck] = []
     #: Other spellings of the title also searched, e.g. "quality assurance lead".
     also_searched: list[str] = []
 
@@ -107,7 +124,11 @@ async def job_search(
         raise HTTPException(422, "Each location must be 120 characters or fewer.")
     if len({p.strip().lower() for p in where if p.strip()}) > MAX_LOCATIONS:
         raise HTTPException(422, f"Search up to {MAX_LOCATIONS} locations at a time.")
-    places = normalize_locations(where)
+    # Check every place before the board sees it: it guesses at anything
+    # ("." -> Alabama) and is silent when it can't match ("new yotrk").
+    checks = [place_check.resolve(p) for p in normalize_locations(where)]
+    places = [c.place for c in checks if c.searchable]
+    place_checks = [PlaceCheck(**vars(c)) for c in checks]
     if job_type is not None and job_type not in JOB_TYPES:
         raise HTTPException(422, f"job_type must be one of: {', '.join(JOB_TYPES)}.")
     if sort not in SORTS:
@@ -120,6 +141,11 @@ async def job_search(
             raise HTTPException(422, "The posted date can't be in the future.")
         if posted_after < now - timedelta(days=365):
             raise HTTPException(422, "Pick a posted date within the last year.")
+
+    if checks and not places:
+        # Places were typed but none is real: searching the whole country
+        # instead would look like an answer. Say what's wrong instead.
+        return JobSearchResponse(postings=[], place_checks=place_checks)
 
     try:
         result = await search_jobs(
@@ -141,6 +167,7 @@ async def job_search(
         raise HTTPException(502, "Job search is unavailable right now.")
 
     return JobSearchResponse(
+        place_checks=place_checks,
         postings=[JobOut(**p.to_dict()) for p in result.postings],
         estimated_matches=[JobOut(**p.to_dict()) for p in result.estimated_matches],
         pages_fetched=result.pages_fetched,
@@ -159,3 +186,10 @@ async def job_search(
         also_searched=result.also_searched,
         excluded_too_old=result.excluded_too_old,
     )
+
+
+@router.get("/places", response_model=list[str])
+async def place_suggestions(user: CurrentUser, q: str = Query(..., min_length=1, max_length=80)):
+    """Places starting with what's typed so far, largest first ("sea" ->
+    Seattle, WA), for the location box on Find Roles."""
+    return place_check.complete(q)

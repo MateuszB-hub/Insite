@@ -10,6 +10,7 @@ import { loadRecent, saveRecent } from '../lib/recent'
 import {
   JOB_TYPE_LABELS,
   MAX_JOB_LOCATIONS,
+  fetchPlaceSuggestions,
   fetchProfile,
   fetchTrackedFingerprints,
   searchJobs,
@@ -17,6 +18,7 @@ import {
   type JobPosting,
   type JobSearchResponse,
   type JobType,
+  type PlaceCheck,
 } from '../lib/api'
 import { PostedAgo, SalaryLine } from './JobBits'
 
@@ -81,6 +83,45 @@ const ageLabel = (r: RecentSearch) =>
   r.posted === 'custom' ? (r.since ? `since ${r.since}` : '')
     : AGE_CHOICES.find((c) => c.value === (r.posted ?? '7'))?.label ?? ''
 
+/** Two letters at least: "3" or "." can't name a place (the board read "."
+ *  as Alabama). */
+const hasLetters = (text: string) => (text.match(/[A-Za-z]/g) ?? []).length >= 2
+
+/**
+ * How the typed places were understood, with one-click fixes. Unknown and
+ * invalid ones were not searched; a shared name shows which place was used.
+ */
+function PlaceNotes({ checks, onUse }: {
+  checks: PlaceCheck[]
+  onUse: (from: string | null, to: string) => void
+}) {
+  const notes = checks.filter((c) => c.status === 'unknown' || c.status === 'invalid' ||
+    (c.status === 'ambiguous' && c.alternatives.length > 0))
+  if (!notes.length) return null
+  const chip = 'px-2.5 py-0.5 rounded-full border border-amber-300 bg-white text-amber-900 hover:border-amber-500'
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 space-y-2 text-sm text-amber-900"
+      data-testid="place-notes">
+      {notes.map((c) => (
+        <p key={c.input} className="flex flex-wrap items-center gap-1.5">
+          <MapPin className="w-4 h-4 shrink-0" />
+          {c.status === 'invalid' && <>"{c.input}" isn't a place, so it wasn't searched.</>}
+          {c.status === 'unknown' && (c.suggestions.length
+            ? <>We couldn't find "{c.input}", so it wasn't searched. Did you mean:</>
+            : <>We couldn't find "{c.input}", so it wasn't searched. Try a city or state, like "Austin, TX".</>)}
+          {c.status === 'ambiguous' && <>"{c.input}": showing {c.place}. Or:</>}
+          {(c.status === 'unknown' ? c.suggestions : c.status === 'ambiguous' ? c.alternatives : []).map((to) => (
+            <button key={to} type="button" className={chip}
+              onClick={() => onUse(c.status === 'ambiguous' ? c.place ?? null : null, to)}>
+              {to}
+            </button>
+          ))}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 /** The site a link opens, so a job board is never mistaken for the employer. */
 function siteOf(url: string): string {
   try {
@@ -99,6 +140,9 @@ export default function JobSearch() {
   const [places, setPlaces] = useState<string[]>(
     () => params.getAll('where').filter(Boolean).slice(0, MAX_JOB_LOCATIONS))
   const [placeDraft, setPlaceDraft] = useState('')
+  const [placeError, setPlaceError] = useState<string | null>(null)
+  const [placeOptions, setPlaceOptions] = useState<string[]>([])
+  const [activeOption, setActiveOption] = useState(-1)
   const [salaryMin, setSalaryMin] = useState('')
   //: Default a week: testers found older adverts are usually already filled.
   const [maxDaysOld, setMaxDaysOld] = useState('7')
@@ -170,9 +214,48 @@ export default function JobSearch() {
     return list.some((x) => x.toLowerCase() === p.toLowerCase()) ? list : [...list, p]
   }
 
-  const addPlace = () => {
-    setPlaces((prev) => withPlace(prev, placeDraft))
+  const addPlace = (text: string = placeDraft) => {
+    const place = text.trim()
+    if (!place) return
+    if (!hasLetters(place)) {
+      setPlaceError(`"${place}" isn't a place. Enter a city or state, like "Austin, TX".`)
+      return
+    }
+    setPlaceError(null)
+    setPlaces((prev) => withPlace(prev, place))
     setPlaceDraft('')
+    setPlaceOptions([])
+  }
+
+  // Suggestions from real places as you type ("sea" -> Seattle, WA).
+  useEffect(() => {
+    const text = placeDraft.trim()
+    if (text.length < 2 || !hasLetters(text)) {
+      setPlaceOptions([])
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      fetchPlaceSuggestions(text)
+        .then((options) => {
+          if (!cancelled) {
+            setPlaceOptions(options)
+            setActiveOption(-1)
+          }
+        })
+        .catch(() => { /* suggestions are a convenience */ })
+    }, 150)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [placeDraft])
+
+  /** Swap a place (or add one) and search again: the fixes in PlaceNotes. */
+  const swapPlace = (from: string | null, to: string) => {
+    const next = withPlace(places.filter((p) => p !== from), to)
+    setPlaces(next)
+    void runSearch(q.trim(), next)
   }
 
   const runSearch = async (
@@ -184,7 +267,7 @@ export default function JobSearch() {
     setLoading(true)
     setError(null)
     try {
-      setData(await searchJobs({
+      const found = await searchJobs({
         q: query,
         where,
         jobType: type || undefined,
@@ -194,7 +277,13 @@ export default function JobSearch() {
         requireStatedSalary: requireStated,
         remoteOnly,
         includeConflictedRemote: includeConflicted,
-      }))
+      })
+      setData(found)
+      // Tags become what was actually searched ("new york" -> "New York, NY");
+      // unknown and junk ones drop out, and PlaceNotes says why.
+      if (found.place_checks?.length) {
+        setPlaces(found.place_checks.filter((c) => c.place).map((c) => c.place!))
+      }
       setRecent(saveRecent('jobs', user?.id,
         { q: query, places: where, jobType: type, posted: when.posted, since: when.since, sort: when.sort },
         recentKey))
@@ -208,7 +297,12 @@ export default function JobSearch() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!q.trim() || loading) return
-    // Text still in the box counts, so nobody has to press Enter first.
+    // Text still in the box counts, so nobody has to press Enter first --
+    // unless it can't be a place.
+    if (placeDraft.trim() && !hasLetters(placeDraft)) {
+      setPlaceError(`"${placeDraft.trim()}" isn't a place. Enter a city or state, like "Austin, TX".`)
+      return
+    }
     const where = withPlace(places, placeDraft)
     setPlaces(where)
     setPlaceDraft('')
@@ -375,13 +469,25 @@ export default function JobSearch() {
                 (optional, up to {MAX_JOB_LOCATIONS})
               </span>
             </label>
+            <div className="relative">
             <input id="where" value={placeDraft}
-              onChange={(e) => setPlaceDraft(e.target.value)}
+              role="combobox" aria-expanded={placeOptions.length > 0} aria-controls="where-options"
+              aria-autocomplete="list" autoComplete="off"
+              onChange={(e) => { setPlaceDraft(e.target.value); setPlaceError(null) }}
+              onBlur={() => setTimeout(() => setPlaceOptions([]), 150)}
               onKeyDown={(e) => {
-                // Enter adds the place as a tag instead of submitting the search.
-                if (e.key === 'Enter' && placeDraft.trim()) {
+                if (e.key === 'ArrowDown' && placeOptions.length) {
                   e.preventDefault()
-                  addPlace()
+                  setActiveOption((i) => Math.min(i + 1, placeOptions.length - 1))
+                } else if (e.key === 'ArrowUp' && placeOptions.length) {
+                  e.preventDefault()
+                  setActiveOption((i) => Math.max(i - 1, 0))
+                } else if (e.key === 'Escape') {
+                  setPlaceOptions([])
+                } else if (e.key === 'Enter' && placeDraft.trim()) {
+                  // Enter adds the place as a tag instead of submitting the search.
+                  e.preventDefault()
+                  addPlace(activeOption >= 0 ? placeOptions[activeOption] : placeDraft)
                 } else if (e.key === 'Backspace' && !placeDraft && places.length) {
                   setPlaces((prev) => prev.slice(0, -1))
                 }
@@ -393,6 +499,22 @@ export default function JobSearch() {
                   : places.length ? 'Add another, press Enter' : 'e.g. Austin, then Enter'
               }
               className={`${field} disabled:bg-slate-50`} />
+            {placeOptions.length > 0 && (
+              <ul id="where-options" role="listbox" aria-label="Place suggestions"
+                className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-sm">
+                {placeOptions.map((option, i) => (
+                  <li key={option} role="option" aria-selected={i === activeOption}>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => addPlace(option)}
+                      className={`w-full text-left px-3 py-1.5 ${i === activeOption ? 'bg-indigo-50 text-indigo-800' : 'text-slate-700 hover:bg-slate-50'}`}>
+                      {option}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            </div>
+            {placeError && <p className="text-xs text-red-700 mt-1" role="alert">{placeError}</p>}
             {places.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2" aria-label="Selected locations">
                 {places.map((place) => (
@@ -499,6 +621,8 @@ export default function JobSearch() {
 
       {data && (
         <>
+          <PlaceNotes checks={data.place_checks ?? []} onUse={swapPlace} />
+
           {data.failed_locations.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
               <p className="text-sm text-amber-800 flex items-center gap-1.5">
@@ -565,7 +689,9 @@ export default function JobSearch() {
 
           {data.postings.length === 0 && data.estimated_matches.length === 0 && !loose.length ? (
             <p className="text-center text-slate-500 py-16">
-              Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Date posted"' : ''}.
+              {(data.place_checks?.length ?? 0) > 0 && !data.place_checks!.some((c) => c.place)
+                ? 'None of the places you entered could be found, so nothing was searched.'
+                : <>Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Date posted"' : ''}.</>}
             </p>
           ) : (
             <>
