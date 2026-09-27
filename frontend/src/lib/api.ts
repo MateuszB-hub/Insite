@@ -586,12 +586,29 @@ export interface JobSearchResponse {
   loose_matches?: JobPosting[]
   /** Older than the date asked for, though the board's whole-day filter let them in. */
   excluded_too_old?: number
+  /** How each typed location was understood; unknown/invalid ones weren't searched. */
+  place_checks?: PlaceCheck[]
   /** Other spellings also searched, learned from O*NET ("RN" for "registered nurse"). */
   also_searched?: string[]
 }
 
 /** Adzuna takes one place per query; the backend runs up to this many. */
 export const MAX_JOB_LOCATIONS = 3
+
+export interface PlaceCheck {
+  input: string
+  status: 'ok' | 'ambiguous' | 'state' | 'unknown' | 'invalid'
+  /** What was searched, e.g. "Austin, TX". */
+  place?: string | null
+  /** Other places with the same name, largest first. */
+  alternatives: string[]
+  /** For an unknown place: did you mean. */
+  suggestions: string[]
+}
+
+/** Real places starting with what's typed ("sea" -> Seattle, WA), largest first. */
+export const fetchPlaceSuggestions = (q: string) =>
+  getJson<string[]>(`/api/places?q=${encodeURIComponent(q)}`)
 
 export type JobType = 'full_time' | 'part_time' | 'contract' | 'permanent'
 
