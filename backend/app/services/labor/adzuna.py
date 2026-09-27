@@ -11,12 +11,13 @@ Free tier after registration (app id + key).
     https://developer.adzuna.com/  (registration)
 """
 
-import asyncio
 import logging
 import os
 import re
 
 import httpx
+
+from app.services.labor import adzuna_http
 
 from .base import (
     Employer,
@@ -60,32 +61,13 @@ class AdzunaSource(MarketSource):
     def _auth(self) -> dict[str, str]:
         return {"app_id": self.app_id, "app_key": self.app_key}
 
-    async def _get(self, path: str, params: dict, attempts: int = 3) -> dict:
-        """GET with a short retry.
-
-        Adzuna returns transient 503s on endpoints that succeed moments later
-        (observed: top_companies failed once, then succeeded three times in a
-        row). Retrying briefly turns a flaky endpoint into a reliable one.
-        """
-        last: Exception | None = None
-        for attempt in range(attempts):
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.get(
-                        f"{BASE_URL}{path}", params={**self._auth(), **params}
-                    )
-                    response.raise_for_status()
-                    return response.json()
-            except httpx.HTTPStatusError as exc:
-                last = exc
-                # Only retry server-side faults; a 401 will never fix itself.
-                if exc.response.status_code < 500:
-                    raise
-            except httpx.HTTPError as exc:
-                last = exc
-            if attempt < attempts - 1:
-                await asyncio.sleep(0.6 * (attempt + 1))
-        raise last if last else RuntimeError("adzuna request failed")
+    async def _get(self, path: str, params: dict) -> dict:
+        """GET through the shared Adzuna client: paced, and retried on
+        refusals (429) and brief server faults (Adzuna returns transient
+        503s on endpoints that succeed moments later)."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            return await adzuna_http.get_json(
+                client, f"{BASE_URL}{path}", {**self._auth(), **params})
 
     async def snapshot(self, query: str, location: str | None = None) -> MarketSnapshot:
         ok, reason = self.configured()

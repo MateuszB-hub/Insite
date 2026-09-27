@@ -184,9 +184,12 @@ def test_locations_are_trimmed_deduplicated_and_capped():
 
 
 @pytest.fixture(autouse=True)
-def _fresh_search_cache():
+def _fresh_search_cache(monkeypatch):
     # Tests reuse queries against different fake responses.
     job_search.clear_search_cache()
+    # Retry pauses are real in production; instant here.
+    from app.services.labor import adzuna_http
+    monkeypatch.setattr(adzuna_http, "_wait", lambda response, attempt: 0)
     yield
     job_search.clear_search_cache()
 
@@ -462,3 +465,37 @@ def test_identical_search_is_served_from_the_cache(monkeypatch):
     assert again is first
     assert other is not first
     assert len(requests) == 2
+
+
+
+# --- a city refused once still comes through; a lasting failure says why ---
+
+def test_a_city_refused_once_still_comes_through(monkeypatch):
+    seen = {"Denver": 0}
+    real = httpx.AsyncClient
+
+    def handler(request):
+        where = request.url.params.get("where")
+        if where == "Denver":
+            seen["Denver"] += 1
+            if seen["Denver"] == 1:
+                return httpx.Response(429)
+        return httpx.Response(200, json={"count": 1, "results": [_job(0, where)]})
+
+    monkeypatch.setattr(job_search.httpx, "AsyncClient",
+                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(job_search, "_record_sightings", lambda postings: {})
+    monkeypatch.setenv("ADZUNA_APP_ID", "id")
+    monkeypatch.setenv("ADZUNA_APP_KEY", "key")
+    result = asyncio.run(search_jobs("engineer", ["Austin", "Denver"], strategy="words"))
+    assert result.failed_locations == []
+    assert sorted(p.location for p in result.postings) == ["Austin", "Denver"]
+
+
+def test_a_lasting_failure_is_logged_with_its_reason(monkeypatch, caplog):
+    _fake_adzuna(monkeypatch, {"Austin": [_job(0, "Austin")], "Denver": []}, fail={"Denver"})
+    with caplog.at_level("WARNING"):
+        result = asyncio.run(search_jobs("engineer", ["Austin", "Denver"], strategy="words"))
+    assert result.failed_locations == ["Denver"]
+    assert "500 Internal Server Error" in caplog.text
+    assert "app_key" not in caplog.text
