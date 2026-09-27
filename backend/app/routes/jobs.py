@@ -46,7 +46,7 @@ class JobOut(BaseModel):
 class PlaceCheck(BaseModel):
     #: What was typed.
     input: str
-    #: ok | ambiguous | state | unknown | invalid
+    #: ok | ambiguous | state | region | remote | unknown | invalid
     status: str
     #: What was searched, e.g. "Austin, TX" (none for unknown / invalid).
     place: str | None = None
@@ -54,6 +54,11 @@ class PlaceCheck(BaseModel):
     alternatives: list[str] = []
     #: For an unknown place: did you mean ("New York, NY" for "new yotrk").
     suggestions: list[str] = []
+    #: Why what's searched differs from what was typed ("Brooklyn is part of
+    #: New York City…", "ZIP 78701 is in Austin, TX…", "US jobs only").
+    note: str | None = None
+    #: Everything searched for it: one place, or a region's cities.
+    places: list[str] = []
 
 
 class JobSearchResponse(BaseModel):
@@ -87,6 +92,11 @@ class JobSearchResponse(BaseModel):
     #: How each typed location was understood. Unknown and invalid ones were
     #: not searched -- the board would otherwise guess ("3" -> Puerto Rico).
     place_checks: list[PlaceCheck] = []
+    #: Places understood but left out: a search covers MAX_LOCATIONS places
+    #: (one board request each), and a region can bring more than that.
+    places_not_searched: list[str] = []
+    #: "Remote" was typed as a place, so the Remote only filter was applied.
+    remote_from_place: bool = False
     #: Other spellings of the title also searched, e.g. "quality assurance lead".
     also_searched: list[str] = []
 
@@ -127,7 +137,17 @@ async def job_search(
     # Check every place before the board sees it: it guesses at anything
     # ("." -> Alabama) and is silent when it can't match ("new yotrk").
     checks = [place_check.resolve(p) for p in normalize_locations(where)]
-    places = [c.place for c in checks if c.searchable]
+    understood: list[str] = []
+    for check in checks:
+        if check.searchable:
+            understood += [p for p in check.places if p not in understood]
+    # A region can bring more places than one search covers; name the rest
+    # rather than letting them drop off.
+    places, places_not_searched = understood[:MAX_LOCATIONS], understood[MAX_LOCATIONS:]
+    # "Remote" typed as a place ("Remote", "Austin (remote)") means the
+    # Remote only filter.
+    remote_from_place = any(c.status == "remote" or c.remote for c in checks)
+    remote_only = remote_only or remote_from_place
     place_checks = [PlaceCheck(**vars(c)) for c in checks]
     if job_type is not None and job_type not in JOB_TYPES:
         raise HTTPException(422, f"job_type must be one of: {', '.join(JOB_TYPES)}.")
@@ -142,9 +162,10 @@ async def job_search(
         if posted_after < now - timedelta(days=365):
             raise HTTPException(422, "Pick a posted date within the last year.")
 
-    if checks and not places:
+    if checks and not places and not remote_from_place:
         # Places were typed but none is real: searching the whole country
         # instead would look like an answer. Say what's wrong instead.
+        # (Only "Remote" typed: a nationwide remote search is what was meant.)
         return JobSearchResponse(postings=[], place_checks=place_checks)
 
     try:
@@ -168,6 +189,8 @@ async def job_search(
 
     return JobSearchResponse(
         place_checks=place_checks,
+        places_not_searched=places_not_searched,
+        remote_from_place=remote_from_place,
         postings=[JobOut(**p.to_dict()) for p in result.postings],
         estimated_matches=[JobOut(**p.to_dict()) for p in result.estimated_matches],
         pages_fetched=result.pages_fetched,

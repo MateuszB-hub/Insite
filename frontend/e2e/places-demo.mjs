@@ -92,6 +92,33 @@ check('only junk places: nothing searched, and it says so',
   body.includes('None of the places you entered could be found, so nothing was searched.'))
 await page.screenshot({ path: `${OUT}/2-nothing-searched.png`, fullPage: false })
 
+// A borough and a ZIP code: searched as the city they're in, and said so.
+for (const place of ['Brooklyn', '78701']) {
+  await page.fill('#where', place)
+  await page.keyboard.press('Escape')
+  await page.press('#where', 'Enter')
+}
+check('a ZIP code is accepted as a location', (await tags()).includes('78701'), await tags())
+await search()
+const cityNotes = await page.locator('[data-testid="place-notes"]').innerText().catch(() => '')
+check('a borough searches New York, NY and says why', /Brooklyn is part of New York City/.test(cityNotes))
+check('a ZIP searches its city and says so', /ZIP 78701 is in Austin, TX/.test(cityNotes))
+check('tags show the cities searched', (await tags()).includes('New York, NY') && (await tags()).includes('Austin, TX'), await tags())
+await page.screenshot({ path: `${OUT}/3-borough-zip.png`, fullPage: false })
+
+// "Remote" typed as a place: the Remote only filter instead, ticked.
+for (const place of ['New York, NY', 'Austin, TX']) {
+  await page.getByRole('button', { name: `Remove ${place}` }).click()
+}
+await page.fill('#where', 'Remote')
+await page.keyboard.press('Escape')
+await page.press('#where', 'Enter')
+await search()
+const remoteNotes = await page.locator('[data-testid="place-notes"]').innerText().catch(() => '')
+check('"Remote" is not searched as a place', /Remote isn't a place/.test(remoteNotes), remoteNotes)
+check('the Remote only box is ticked', await page.getByLabel('Genuinely remote only').isChecked())
+await page.screenshot({ path: `${OUT}/4-remote.png`, fullPage: false })
+
 check('no JS errors', errs.length === 0, errs.slice(0, 2).join('; '))
 
 await browser.close()

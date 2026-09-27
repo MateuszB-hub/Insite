@@ -23,3 +23,12 @@ without pay. Re-run each spring when BLS publishes a new year.
 
 `titles.json` and `abbreviations.json` — O*NET alternate and reported job
 titles, and the abbreviations learned from them; written by `vendor_onet`.
+
+`places.json` and `zips.json` — every US city, town, census-designated
+place and county with its population, and each 5-digit ZIP code with the
+place it lies in (or its county, when no one place covers most of it);
+written by `python -m app.scripts.vendor_places` (public Census files, no
+key). Locations are checked against these before a job search, so the board
+never has to guess. Population only ranks places that share a name; where
+the 2023 estimates skip a place (census-designated places, Puerto Rico), its
+2010 census count stands in.

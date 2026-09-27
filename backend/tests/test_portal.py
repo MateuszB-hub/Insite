@@ -429,3 +429,58 @@ def test_place_suggestions_as_you_type(applicant):
     assert r.status_code == 200
     assert r.json()[0] == "Seattle, WA"
     assert TestClient(app).get("/api/places?q=sea").status_code == 401
+
+
+def test_remote_typed_as_a_place_searches_nationwide_remote_only(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import SearchResult
+    seen = {}
+
+    async def fake_search(q, places, **kwargs):
+        seen.update(places=places, remote_only=kwargs["remote_only"])
+        return SearchResult(locations_searched=places)
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    r = applicant.get("/api/jobs/search?q=nurse&where=Remote")
+    assert r.status_code == 200, r.text
+    assert seen == {"places": [], "remote_only": True}
+    body = r.json()
+    assert body["remote_from_place"] is True
+    assert body["place_checks"][0]["status"] == "remote"
+
+
+def test_a_region_is_searched_as_its_cities_and_extras_are_named(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import SearchResult
+    seen = {}
+
+    async def fake_search(q, places, **kwargs):
+        seen["places"] = places
+        return SearchResult(locations_searched=places)
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    r = applicant.get("/api/jobs/search?q=nurse&where=Denver&where=Bay%20Area&where=78701")
+    assert r.status_code == 200, r.text
+    # One request per place: never more than three, and never silently fewer.
+    assert seen["places"] == ["Denver, CO", "San Francisco, CA", "Oakland, CA"]
+    body = r.json()
+    assert body["places_not_searched"] == ["San Jose, CA", "Austin, TX"]
+    assert body["remote_from_place"] is False
+    notes = {c["input"]: c["note"] for c in body["place_checks"]}
+    assert "ZIP 78701" in notes["78701"]
+
+
+def test_a_place_marked_remote_searches_it_remote_only(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import SearchResult
+    seen = {}
+
+    async def fake_search(q, places, **kwargs):
+        seen.update(places=places, remote_only=kwargs["remote_only"])
+        return SearchResult(locations_searched=places)
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    r = applicant.get("/api/jobs/search?q=nurse&where=Austin%20(remote)")
+    assert r.status_code == 200, r.text
+    assert seen == {"places": ["Austin, TX"], "remote_only": True}
+    assert r.json()["remote_from_place"] is True
