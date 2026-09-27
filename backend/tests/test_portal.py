@@ -310,3 +310,64 @@ def test_listing_only_shows_mine(applicant, other):
     assert other.get("/api/applications").json() == {
         "items": [], "total": 0,
         "counts": {"active": 0, "interviewing": 0, "offers": 0, "closed": 0, "all": 0}}
+
+
+
+# --- certifications and résumé import -----------------------------------------
+
+def test_certifications_roundtrip_and_export(applicant):
+    certs = ["Certified Scrum Master, CSM", "BLS"]   # a comma inside a name survives
+    r = applicant.put("/api/me/profile", json={"current_role": "Nurse", "certifications": certs})
+    assert r.status_code == 200, r.text
+    assert applicant.get("/api/me/profile").json()["certifications"] == certs
+    assert applicant.get("/api/me/export").json()["profile"]["certifications"] == certs
+
+
+def _pdf():
+    from tests.pdf_fixtures import NURSE, make_pdf
+    return {"file": ("resume.pdf", make_pdf(NURSE), "application/pdf")}
+
+
+@pytest.fixture
+def fake_resume(monkeypatch):
+    from app.routes import portal
+    from app.services import resume
+
+    async def suggest(data):
+        assert data.startswith(b"%PDF")
+        return {"fields": {"current_role": "Registered Nurse", "skills": ["Triage"]},
+                "sources": {"current_role": "résumé"}, "dropped": {"skills": 1},
+                "jobs_found": 2, "pages": 1, "engine": "test"}
+    monkeypatch.setattr(resume, "suggest_profile", suggest)
+    portal._resume_uses.clear()
+    yield
+    portal._resume_uses.clear()
+
+
+def test_resume_needs_sign_in():
+    assert TestClient(app).post("/api/me/profile/resume", files=_pdf()).status_code == 401
+
+
+def test_resume_suggests_and_saves_nothing(applicant, fake_resume):
+    r = applicant.post("/api/me/profile/resume", files=_pdf())
+    assert r.status_code == 200, r.text
+    assert r.json()["fields"]["current_role"] == "Registered Nurse"
+    assert r.json()["dropped"] == {"skills": 1}
+    # Suggestions only: the profile is untouched until the person saves.
+    assert applicant.get("/api/me/profile").json()["current_role"] is None
+
+
+def test_resume_bad_file_gets_a_plain_reason(applicant):
+    from app.routes import portal
+    portal._resume_uses.clear()
+    r = applicant.post("/api/me/profile/resume",
+                       files={"file": ("cv.docx", b"PK\x03\x04 not a pdf", "application/octet-stream")})
+    assert r.status_code == 422
+    assert "isn't a PDF" in r.json()["detail"]
+
+
+def test_resume_is_limited_per_hour(applicant, fake_resume):
+    from app.routes import portal
+    codes = [applicant.post("/api/me/profile/resume", files=_pdf()).status_code
+             for _ in range(portal.RESUME_LIMIT + 1)]
+    assert codes == [200] * portal.RESUME_LIMIT + [429]

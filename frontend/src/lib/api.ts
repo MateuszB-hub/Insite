@@ -379,8 +379,41 @@ export interface Profile {
   years_experience?: number | null
   location?: string | null
   skills: string[]
+  certifications?: string[]
   summary?: string | null
   updated_at?: string | null
+}
+
+export type ResumeField =
+  'current_role' | 'location' | 'years_experience' | 'industry' | 'summary' | 'skills' | 'certifications'
+
+export interface ResumeSuggestion {
+  /** What to put in the form. Nothing has been saved. */
+  fields: {
+    current_role?: string | null
+    location?: string | null
+    years_experience?: number | null
+    industry?: string | null
+    summary?: string | null
+    skills: string[]
+    certifications: string[]
+  }
+  /** "résumé", "calculated from your job dates", or "suggested". */
+  sources: Partial<Record<ResumeField, string>>
+  /** Items the model returned that aren't in the résumé, so were dropped. */
+  dropped: Record<string, number>
+  jobs_found: number
+  pages: number
+  engine: string
+}
+
+/** Read a résumé PDF into suggested profile fields. Saves nothing. */
+export async function uploadResume(file: File): Promise<ResumeSuggestion> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await apiFetch('/api/me/profile/resume', { ...withCreds, method: 'POST', body })
+  if (!res.ok) throw new Error(await readError(res))
+  return res.json()
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -431,6 +464,7 @@ export async function saveProfile(p: Profile): Promise<Profile> {
       years_experience: p.years_experience ?? null,
       location: p.location || null,
       skills: p.skills,
+      certifications: p.certifications ?? [],
       summary: p.summary || null,
     }),
   })

@@ -503,6 +503,7 @@ def export_my_data(user: CurrentUser, db: DbSession):
             "years_experience": user.profile.years_experience,
             "location": user.profile.location,
             "skills": user.profile.skill_list(),
+            "certifications": user.profile.certification_list(),
             "summary": user.profile.summary,
         }
         if user.profile

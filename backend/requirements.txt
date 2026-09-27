@@ -23,5 +23,10 @@ anthropic>=0.40.0
 # Search
 ddgs>=9.0.0
 
+# Résumé import: read the text of an uploaded PDF (pure Python), and accept
+# the multipart file upload itself.
+pypdf>=6.0.0
+python-multipart>=0.0.20
+
 # Config
 python-dotenv>=1.1.0
