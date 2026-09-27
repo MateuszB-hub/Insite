@@ -385,3 +385,47 @@ def test_job_search_refuses_bad_dates_and_sorts(applicant, query, reason):
     r = applicant.get(f"/api/jobs/search?q=nurse&{query}")
     assert r.status_code == 422
     assert reason in r.json()["detail"]
+
+
+
+# --- job search: places are checked before the board sees them ---------------
+
+def test_junk_places_are_not_searched_at_all(applicant, monkeypatch):
+    from app.routes import jobs
+
+    async def must_not_search(*args, **kwargs):
+        raise AssertionError("searched although no place was real")
+    monkeypatch.setattr(jobs, "search_jobs", must_not_search)
+
+    r = applicant.get("/api/jobs/search?q=cloud%20engineer&where=new%20yotrk&where=3&where=.")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["postings"] == []
+    checks = {c["input"]: c for c in body["place_checks"]}
+    assert checks["new yotrk"]["status"] == "unknown"
+    assert checks["new yotrk"]["suggestions"][0] == "New York, NY"
+    assert checks["3"]["status"] == checks["."]["status"] == "invalid"
+
+
+def test_real_places_are_searched_by_their_full_name(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import SearchResult
+    seen = {}
+
+    async def fake_search(q, places, **kwargs):
+        seen["places"] = places
+        return SearchResult(locations_searched=places)
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    r = applicant.get("/api/jobs/search?q=nurse&where=austin%20tx&where=springfield&where=zzzz")
+    assert r.status_code == 200, r.text
+    assert seen["places"] == ["Austin, TX", "Springfield, MO"]
+    statuses = [c["status"] for c in r.json()["place_checks"]]
+    assert statuses == ["ok", "ambiguous", "unknown"]
+
+
+def test_place_suggestions_as_you_type(applicant):
+    r = applicant.get("/api/places?q=sea")
+    assert r.status_code == 200
+    assert r.json()[0] == "Seattle, WA"
+    assert TestClient(app).get("/api/places?q=sea").status_code == 401
