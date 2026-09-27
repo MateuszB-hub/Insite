@@ -275,6 +275,12 @@ rollback() {
   use_env "${1:-live}"
   [ -f "$DIR.prev/VERSION" ] || die "no previous release kept in $DIR.prev"
   say "-> rolling $ENV back to $(awk '{print $1, substr($2,1,8)}' "$DIR.prev/VERSION")"
+  # The release being rolled back may have migrated the database. The older
+  # code must still recognise that revision, or `alembic upgrade head` fails
+  # at start-up and the service crash-loops (it happened: "Can't locate
+  # revision"). Carry the migration files back with it; migrations are
+  # additive by rule, so the older code runs fine on the newer schema.
+  rsync -a "$DIR/backend/alembic/versions/" "$DIR.prev/backend/alembic/versions/"
   rsync -a --delete --exclude 'logs/' "$DIR.prev/" "$DIR/"
   start
 }
