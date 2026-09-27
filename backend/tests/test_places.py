@@ -103,7 +103,12 @@ def test_suggestions_as_you_type():
     # 7. places the 2023 estimates skip are still ranked by size
     ("San Juan", "ambiguous", ["San Juan, PR"], None),
     # 8. a real name in the wrong state
-    ("Austin, CA", "unknown", [], "no Austin in California"),
+    ("Austin, CA", "unknown", [], "find Austin in California"),
+    # towns and townships where they are the local government
+    ("Edison, NJ", "ok", ["Edison, NJ"], None),
+    ("Cherry Hill NJ", "ok", ["Cherry Hill, NJ"], None),
+    ("Lower Merion, PA", "ok", ["Lower Merion, PA"], None),
+    ("Queensbury, NY", "ok", ["Queensbury, NY"], None),
     # unchanged: junk and markup stay unsearched
     ("<script>alert(1)</script>", "unknown", [], None),
     (".", "invalid", [], None),

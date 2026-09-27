@@ -79,6 +79,9 @@ FOREIGN = {
     "india", "australia", "mexico", "europe",
 }
 US_ONLY = "Insite lists US jobs only."
+#: A city this big keeps a state's name ("New York", "Washington"); smaller
+#: namesakes (Texas township, PA; Delaware, OH) give way to the state.
+STATE_NAMESAKE = 500_000
 #: Canadian provinces, as typed after a city ("Toronto ON").
 PROVINCES = {"on", "qc", "bc", "ab", "mb", "sk", "ns", "nb", "nl", "pei", "ontario",
              "quebec", "british columbia", "alberta"}
@@ -254,6 +257,10 @@ def _resolve_place(raw: str, norm: str) -> Resolution:
                           note=f"{name.title()} is part of New York City, which job boards list as New York, NY.")
     foreign = state is None and name in FOREIGN
     candidates = [p for p in by_name.get(name, []) if state is None or p.state == state]
+    if state is None and name in state_names and not any(p.population >= STATE_NAMESAKE for p in candidates):
+        # "Texas", "Delaware": the state, not Texas township, PA. Only a big
+        # city keeps the name (New York, Washington).
+        return Resolution(raw, "state", codes[state_names[name]])
     if candidates:
         best = candidates[0]
         others = [p.label for p in candidates[1:4]]
@@ -278,7 +285,7 @@ def _resolve_place(raw: str, norm: str) -> Resolution:
         # "Austin, CA": a real name in the wrong state.
         elsewhere = by_name[name]
         return Resolution(raw, "unknown", suggestions=[p.label for p in elsewhere[:3]],
-                          note=f"There's no {elsewhere[0].name} in {codes[state]}.")
+                          note=f"We couldn't find {elsewhere[0].name} in {codes[state]}.")
     return Resolution(raw, "unknown", suggestions=_suggest(name, state))
 
 

@@ -3,7 +3,8 @@
     python -m app.scripts.vendor_places
 
 Writes app/data/places.json: states, and every city, town, census-designated
-place (Arlington, VA; Silver Spring, MD) and county, with 2023 population
+place (Arlington, VA; Silver Spring, MD), county, and -- where towns and
+townships are the local government -- county subdivision (Edison, NJ), with 2023 population
 where the Census publishes it -- so a location can be checked before it is
 searched, typos can be caught ("new yotrk" -> New York, NY), and a name that
 several places share lists the largest first (Springfield, MO before IL).
@@ -41,6 +42,10 @@ UA = {"User-Agent": "Insite/0.1 (career research tool)"}
 GAZ = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2023_Gazetteer/"
 PLACES_ZIP = GAZ + "2023_Gaz_place_national.zip"
 COUNTIES_ZIP = GAZ + "2023_Gaz_counties_national.zip"
+COUSUBS_ZIP = GAZ + "2023_Gaz_cousubs_national.zip"
+#: States where towns and townships are general-purpose governments, so a
+#: sizeable one (Edison, NJ; Lower Merion, PA) is no Census "place" at all.
+MCD_STATES = {"CT", "ME", "MA", "MI", "MN", "NH", "NJ", "NY", "PA", "RI", "VT", "WI"}
 POPEST = "https://www2.census.gov/programs-surveys/popest/datasets/2020-2023/"
 CITY_POP = POPEST + "cities/totals/sub-est2023.csv"
 COUNTY_POP = POPEST + "counties/totals/co-est2023-alldata.csv"
@@ -164,6 +169,9 @@ def main() -> None:
     print("  counties (gazetteer)…")
     counties = _gazetteer(COUNTIES_ZIP)
 
+    print("  towns and townships (gazetteer)…")
+    cousubs = [row for row in _gazetteer(COUSUBS_ZIP)
+               if row["USPS"] in MCD_STATES and row["FUNCSTAT"] == "A"]
     print("  2010 counts (for places the 2023 estimates skip)…")
     places_2010 = _pop_2010(PLACES_2010_ZIP)
     counties_2010 = _pop_2010(COUNTIES_2010_ZIP)
@@ -183,6 +191,10 @@ def main() -> None:
         pop = city_pop.get((STATES[st], row["NAME"]), 0) or places_2010.get(row["GEOID"], 0)
         key = (name, st)
         out[key] = max(out.get(key, 0), pop)
+    for row in cousubs:
+        st = row["USPS"]
+        key = (clean(row["NAME"]), st)
+        out[key] = max(out.get(key, 0), city_pop.get((STATES[st], row["NAME"]), 0))
     for row in counties:
         st = row["USPS"]
         if st not in STATES:
