@@ -11,9 +11,12 @@ Authorisation rules enforced here (never in the client):
 * Every application is to an external job, tracked by content fingerprint.
 """
 
+import asyncio
 import logging
+import secrets
 import time
 from collections import defaultdict, deque
+from dataclasses import dataclass
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
@@ -88,6 +91,28 @@ RESUME_LIMIT = 5
 RESUME_WINDOW_S = 3600
 _resume_uses: dict[str, deque] = defaultdict(deque)
 
+#: Reading runs in the background and the page polls for it: a long résumé
+#: takes over a minute, and Cloudflare cuts any request at 100 s (a 524).
+#: Held in memory only (one worker), handed over once, gone after this long.
+RESUME_JOB_TTL_S = 600
+
+
+@dataclass
+class _ResumeJob:
+    user_id: str
+    started: float
+    task: asyncio.Task
+
+
+_resume_jobs: dict[str, _ResumeJob] = {}
+
+
+def _forget_old_resume_jobs(now: float) -> None:
+    for job_id, job in list(_resume_jobs.items()):
+        if now - job.started > RESUME_JOB_TTL_S:
+            job.task.cancel()
+            del _resume_jobs[job_id]
+
 
 class ResumeFields(BaseModel):
     current_role: str | None = None
@@ -112,14 +137,28 @@ class ResumeSuggestion(BaseModel):
     engine: str = ""
 
 
-@router.post("/me/profile/resume", response_model=ResumeSuggestion)
-async def suggest_from_resume(user: CurrentUser, file: UploadFile = File(...)):
-    """Read a résumé PDF and suggest profile fields. Saves nothing.
+class ResumeJobStatus(BaseModel):
+    job_id: str
+    #: reading | done | failed
+    status: str
+    #: When done.
+    result: ResumeSuggestion | None = None
+    #: When failed: a plain-English reason.
+    error: str | None = None
 
-    The file and its text stay in memory for this request only: not stored,
-    not logged, and read by the local model, never an outside service.
+
+@router.post("/me/profile/resume", response_model=ResumeJobStatus, status_code=202)
+async def suggest_from_resume(user: CurrentUser, file: UploadFile = File(...)):
+    """Start reading a résumé PDF into suggested profile fields. Saves nothing.
+
+    The PDF is checked here, so a bad file gets its reason at once; the model
+    step runs in the background and GET .../resume/{job_id} returns it. The
+    text and result stay in memory only: not stored, not logged, read by the
+    local model, never an outside service, and dropped once collected or
+    after RESUME_JOB_TTL_S.
     """
     now = time.monotonic()
+    _forget_old_resume_jobs(now)
     uses = _resume_uses[user.id]
     while uses and now - uses[0] > RESUME_WINDOW_S:
         uses.popleft()
@@ -129,9 +168,37 @@ async def suggest_from_resume(user: CurrentUser, file: UploadFile = File(...)):
 
     data = await file.read(resume.MAX_BYTES + 1)
     try:
-        return await resume.suggest_profile(data)
+        text, pages = await resume.read_pdf(data)
     except resume.ResumeError as exc:
         raise HTTPException(422, str(exc)) from exc
+    job_id = secrets.token_urlsafe(16)
+    task = asyncio.create_task(resume.suggest_from_text(text, pages))
+    _resume_jobs[job_id] = _ResumeJob(user.id, now, task)
+    return ResumeJobStatus(job_id=job_id, status="reading")
+
+
+@router.get("/me/profile/resume/{job_id}", response_model=ResumeJobStatus)
+async def resume_job_status(job_id: str, user: CurrentUser):
+    """How a résumé read is going. A finished result is handed over once."""
+    job = _resume_jobs.get(job_id)
+    if job is None or job.user_id != user.id:
+        # Someone else's job looks exactly like a missing one.
+        raise HTTPException(404, "That résumé upload has expired. Please upload it again.")
+    if not job.task.done():
+        return ResumeJobStatus(job_id=job_id, status="reading")
+    del _resume_jobs[job_id]
+    exc = job.task.exception() if not job.task.cancelled() else None
+    if job.task.cancelled():
+        return ResumeJobStatus(job_id=job_id, status="failed",
+                               error="That résumé upload has expired. Please upload it again.")
+    if isinstance(exc, resume.ResumeError):
+        return ResumeJobStatus(job_id=job_id, status="failed", error=str(exc))
+    if exc is not None:
+        logger.warning("résumé job failed: %s", type(exc).__name__)
+        return ResumeJobStatus(job_id=job_id, status="failed",
+                               error="The résumé couldn't be read just now. Please try again, "
+                                     "or fill in the form by hand.")
+    return ResumeJobStatus(job_id=job_id, status="done", result=job.task.result())
 
 
 @router.put("/me/profile", response_model=ProfileOut)

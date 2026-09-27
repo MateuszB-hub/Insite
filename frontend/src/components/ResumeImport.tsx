@@ -65,7 +65,7 @@ export default function ResumeImport({ onSuggestion }: {
         </label>
       </div>
       {busy && (
-        <p className="text-sm text-indigo-800 mt-3">Reading your résumé. This takes about 10–30 seconds.</p>
+        <p className="text-sm text-indigo-800 mt-3">Reading your résumé. This takes about 30 seconds, or a minute or two for a long one.</p>
       )}
       {report && <p className="text-sm text-slate-700 mt-3" data-testid="resume-report">{report}</p>}
       {error && <p className="text-sm text-red-700 mt-3" role="alert">{error}</p>}

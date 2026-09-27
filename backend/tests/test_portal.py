@@ -333,31 +333,77 @@ def fake_resume(monkeypatch):
     from app.routes import portal
     from app.services import resume
 
-    async def suggest(data):
-        assert data.startswith(b"%PDF")
+    async def suggest(text, pages):
+        assert "Nebraska Medical Center" in text
         return {"fields": {"current_role": "Registered Nurse", "skills": ["Triage"]},
                 "sources": {"current_role": "résumé"}, "dropped": {"skills": 1},
-                "jobs_found": 2, "pages": 1, "engine": "test"}
-    monkeypatch.setattr(resume, "suggest_profile", suggest)
+                "jobs_found": 2, "pages": pages, "engine": "test"}
+    monkeypatch.setattr(resume, "suggest_from_text", suggest)
     portal._resume_uses.clear()
+    portal._resume_jobs.clear()
     yield
     portal._resume_uses.clear()
+    portal._resume_jobs.clear()
+
+
+def _read_resume(client):
+    """Upload, then poll as the page does, until the job is finished."""
+    import time as _time
+    r = client.post("/api/me/profile/resume", files=_pdf())
+    assert r.status_code == 202, r.text
+    job = r.json()
+    assert job["status"] == "reading"
+    for _ in range(200):
+        status = client.get(f"/api/me/profile/resume/{job['job_id']}")
+        assert status.status_code == 200, status.text
+        if status.json()["status"] != "reading":
+            return job["job_id"], status.json()
+        _time.sleep(0.01)
+    raise AssertionError("résumé job never finished")
 
 
 def test_resume_needs_sign_in():
     assert TestClient(app).post("/api/me/profile/resume", files=_pdf()).status_code == 401
+    assert TestClient(app).get("/api/me/profile/resume/anything").status_code == 401
 
 
 def test_resume_suggests_and_saves_nothing(applicant, fake_resume):
-    r = applicant.post("/api/me/profile/resume", files=_pdf())
-    assert r.status_code == 200, r.text
-    assert r.json()["fields"]["current_role"] == "Registered Nurse"
-    assert r.json()["dropped"] == {"skills": 1}
+    _, job = _read_resume(applicant)
+    assert job["status"] == "done", job
+    assert job["result"]["fields"]["current_role"] == "Registered Nurse"
+    assert job["result"]["dropped"] == {"skills": 1}
     # Suggestions only: the profile is untouched until the person saves.
     assert applicant.get("/api/me/profile").json()["current_role"] is None
 
 
-def test_resume_bad_file_gets_a_plain_reason(applicant):
+def test_resume_result_is_handed_over_once(applicant, fake_resume):
+    job_id, job = _read_resume(applicant)
+    assert job["status"] == "done"
+    # Held in memory only until collected.
+    assert applicant.get(f"/api/me/profile/resume/{job_id}").status_code == 404
+
+
+def test_someone_elses_resume_job_looks_missing(applicant, fake_resume, monkeypatch):
+    from app.routes import portal
+    r = applicant.post("/api/me/profile/resume", files=_pdf())
+    job_id = r.json()["job_id"]
+    other = portal._resume_jobs[job_id]
+    monkeypatch.setattr(other, "user_id", "someone-else")
+    assert applicant.get(f"/api/me/profile/resume/{job_id}").status_code == 404
+
+
+def test_resume_model_failure_is_a_plain_message(applicant, fake_resume, monkeypatch):
+    from app.services import resume
+
+    async def fails(text, pages):
+        raise resume.ResumeError("Reading this résumé is taking too long right now.")
+    monkeypatch.setattr(resume, "suggest_from_text", fails)
+    _, job = _read_resume(applicant)
+    assert job == {"job_id": job["job_id"], "status": "failed", "result": None,
+                   "error": "Reading this résumé is taking too long right now."}
+
+
+def test_resume_bad_file_gets_a_plain_reason_at_once(applicant):
     from app.routes import portal
     portal._resume_uses.clear()
     r = applicant.post("/api/me/profile/resume",
@@ -370,8 +416,15 @@ def test_resume_is_limited_per_hour(applicant, fake_resume):
     from app.routes import portal
     codes = [applicant.post("/api/me/profile/resume", files=_pdf()).status_code
              for _ in range(portal.RESUME_LIMIT + 1)]
-    assert codes == [200] * portal.RESUME_LIMIT + [429]
+    assert codes == [202] * portal.RESUME_LIMIT + [429]
 
+
+def test_old_resume_jobs_are_forgotten(applicant, fake_resume, monkeypatch):
+    from app.routes import portal
+    job_id = applicant.post("/api/me/profile/resume", files=_pdf()).json()["job_id"]
+    portal._resume_jobs[job_id].started -= portal.RESUME_JOB_TTL_S + 1
+    portal._forget_old_resume_jobs(__import__("time").monotonic())
+    assert applicant.get(f"/api/me/profile/resume/{job_id}").status_code == 404
 
 
 # --- job search: date posted and sort are checked at the door ----------------

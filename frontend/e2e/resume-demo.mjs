@@ -71,11 +71,14 @@ await page.fill('#loc', 'Chicago')
 await page.getByRole('button', { name: 'Save profile' }).click()
 await page.waitForSelector('text=Saved', { timeout: 10000 })
 
+// The upload returns at once and the page polls while the model reads, so
+// wait for the reading to finish, not for the first response.
 const upload = async (file) => {
   await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/api/me/profile/resume'), { timeout: 120000 }),
+    page.waitForResponse((r) => r.url().endsWith('/api/me/profile/resume'), { timeout: 30000 }),
     page.setInputFiles('input[type=file]', file),
   ])
+  await page.waitForSelector('text=Reading…', { state: 'detached', timeout: 300000 })
   await page.waitForTimeout(300)
 }
 
@@ -119,6 +122,17 @@ check('after Use it and Save, it is kept',
 await upload({ name: 'resume.docx', mimeType: 'application/octet-stream', buffer: Buffer.from('PK not a pdf') })
 const alert = await page.getByRole('alert').innerText().catch(() => '')
 check('a non-PDF gets a plain explanation', /isn't a PDF/.test(alert), alert)
+
+// Optional: a real, long résumé kept outside the repo. Timing and pass/fail
+// only -- no screenshot, nothing from it printed.
+if (process.env.DEMO_EXTRA_RESUME) {
+  const { readFileSync } = await import('node:fs')
+  const t = Date.now()
+  await upload({ name: 'extra.pdf', mimeType: 'application/pdf', buffer: readFileSync(process.env.DEMO_EXTRA_RESUME) })
+  const extraSecs = ((Date.now() - t) / 1000).toFixed(1)
+  const failedRead = await page.getByRole('alert').innerText().catch(() => '')
+  check('a long real résumé is read without a timeout', !failedRead, failedRead || `${extraSecs}s`)
+}
 
 check('no JS errors', errs.length === 0, errs.slice(0, 2).join('; '))
 

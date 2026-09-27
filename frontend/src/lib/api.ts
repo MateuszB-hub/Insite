@@ -407,13 +407,40 @@ export interface ResumeSuggestion {
   engine: string
 }
 
-/** Read a résumé PDF into suggested profile fields. Saves nothing. */
+interface ResumeJob {
+  job_id: string
+  status: 'reading' | 'done' | 'failed'
+  result?: ResumeSuggestion | null
+  error?: string | null
+}
+
+/** How often to ask, and when to give up (the server stops at 240 s). */
+const RESUME_POLL_MS = 2000
+const RESUME_GIVE_UP_MS = 5 * 60 * 1000
+
+/**
+ * Read a résumé PDF into suggested profile fields. Saves nothing.
+ * The upload returns at once and the reading runs on the server, so a long
+ * résumé isn't cut off by the 100 s request limit in front of the site.
+ */
 export async function uploadResume(file: File): Promise<ResumeSuggestion> {
   const body = new FormData()
   body.append('file', file)
   const res = await apiFetch('/api/me/profile/resume', { ...withCreds, method: 'POST', body })
   if (!res.ok) throw new Error(await readError(res))
-  return res.json()
+  let job: ResumeJob = await res.json()
+  const started = Date.now()
+  while (job.status === 'reading') {
+    if (Date.now() - started > RESUME_GIVE_UP_MS) {
+      throw new Error('Reading your résumé is taking too long. Please try again, or fill in the form by hand.')
+    }
+    await new Promise((resolve) => setTimeout(resolve, RESUME_POLL_MS))
+    job = await getJson<ResumeJob>(`/api/me/profile/resume/${encodeURIComponent(job.job_id)}`)
+  }
+  if (job.status === 'failed' || !job.result) {
+    throw new Error(job.error ?? "The résumé couldn't be read just now.")
+  }
+  return job.result
 }
 
 async function getJson<T>(url: string): Promise<T> {
