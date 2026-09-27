@@ -144,8 +144,9 @@ async def job_search(
     # A region can bring more places than one search covers; name the rest
     # rather than letting them drop off.
     places, places_not_searched = understood[:MAX_LOCATIONS], understood[MAX_LOCATIONS:]
-    # "Remote" typed as a place means the Remote only filter.
-    remote_from_place = any(c.status == "remote" for c in checks)
+    # "Remote" typed as a place ("Remote", "Austin (remote)") means the
+    # Remote only filter.
+    remote_from_place = any(c.status == "remote" or c.remote for c in checks)
     remote_only = remote_only or remote_from_place
     place_checks = [PlaceCheck(**vars(c)) for c in checks]
     if job_type is not None and job_type not in JOB_TYPES:

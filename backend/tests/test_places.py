@@ -146,9 +146,8 @@ def test_every_zip_points_at_a_known_place():
     assert set(zips.values()) <= known
 
 
-# --- found by the tester beyond the plan's criteria; xfail until fixed -------
+# --- found by the tester beyond the plan's criteria (bugs B1-B4, fixed) ----
 
-@pytest.mark.xfail(strict=True, reason="bug B1: 'City, Country' isn't named as outside the US")
 @pytest.mark.parametrize("typed", ["Paris, France", "London, UK", "Toronto, Canada", "Toronto ON"])
 def test_city_with_a_foreign_country_says_us_only(typed):
     r = places.resolve(typed)
@@ -156,18 +155,15 @@ def test_city_with_a_foreign_country_says_us_only(typed):
     assert "US jobs only" in (r.note or "")
 
 
-@pytest.mark.xfail(strict=True, reason="bug B2: remote plus a place isn't understood")
 @pytest.mark.parametrize("typed", ["Remote - Austin, TX", "Austin (remote)", "remote austin"])
 def test_remote_with_a_place_searches_the_place_remote_only(typed):
     r = places.resolve(typed)
     assert r.places == ["Austin, TX"] and r.remote
 
 
-@pytest.mark.xfail(strict=True, reason="bug B3: a number that isn't a ZIP hides the text before it")
 def test_a_number_that_is_no_zip_falls_back_to_the_text():
     assert places.resolve("Austin, TX 00000").places == ["Austin, TX"]
 
 
-@pytest.mark.xfail(strict=True, reason="bug B4: a region with its state isn't recognised")
 def test_a_region_with_its_state():
     assert places.resolve("Bay Area, CA").status == "region"
