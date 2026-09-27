@@ -1,841 +1,1395 @@
 {
 "by_soc": {
 "11-1011": {
-"employment": 204350
+"employment": 204350,
+"mean": 269630.0,
+"median": 213990.0
 },
 "11-1021": {
-"employment": 3503020
+"employment": 3503020,
+"mean": 134940.0,
+"median": 105770.0
 },
 "11-2011": {
-"employment": 21470
+"employment": 21470,
+"mean": 154280.0,
+"median": 133660.0
 },
 "11-2021": {
-"employment": 395240
+"employment": 395240,
+"mean": 177770.0,
+"median": 166790.0
 },
 "11-2022": {
-"employment": 637080
+"employment": 637080,
+"mean": 164350.0,
+"median": 148270.0
 },
 "11-2032": {
-"employment": 74850
+"employment": 74850,
+"mean": 164760.0,
+"median": 146910.0
 },
 "11-2033": {
-"employment": 38810
+"employment": 38810,
+"mean": 140020.0,
+"median": 125470.0
 },
 "11-3012": {
-"employment": 263960
+"employment": 263960,
+"mean": 129870.0,
+"median": 114130.0
 },
 "11-3013": {
-"employment": 156180
+"employment": 156180,
+"mean": 116890.0,
+"median": 106660.0
 },
 "11-3021": {
-"employment": 670570
+"employment": 670570,
+"mean": 192160.0,
+"median": 175140.0
 },
 "11-3031": {
-"employment": 841710
+"employment": 841710,
+"mean": 186910.0,
+"median": 166570.0
 },
 "11-3051": {
-"employment": 246250
+"employment": 246250,
+"mean": 134170.0,
+"median": 126060.0
 },
 "11-3061": {
-"employment": 84320
+"employment": 84320,
+"mean": 156360.0,
+"median": 148080.0
 },
 "11-3071": {
-"employment": 221180
+"employment": 221180,
+"mean": 121600.0,
+"median": 107230.0
 },
 "11-3111": {
-"employment": 22940
+"employment": 22940,
+"mean": 162640.0,
+"median": 149230.0
 },
 "11-3121": {
-"employment": 220660
+"employment": 220660,
+"mean": 164230.0,
+"median": 149280.0
 },
 "11-3131": {
-"employment": 48050
+"employment": 48050,
+"mean": 148370.0,
+"median": 133000.0
 },
 "11-9013": {
-"employment": 6500
+"employment": 6500,
+"mean": 99820.0,
+"median": 89900.0
 },
 "11-9021": {
-"employment": 380360
+"employment": 380360,
+"mean": 124360.0,
+"median": 114990.0
 },
 "11-9031": {
-"employment": 73660
+"employment": 73660,
+"mean": 64800.0,
+"median": 59300.0
 },
 "11-9032": {
-"employment": 328330
+"employment": 328330,
+"mean": 116100.0,
+"median": 105870.0
 },
 "11-9033": {
-"employment": 180470
+"employment": 180470,
+"mean": 126540.0,
+"median": 104590.0
 },
 "11-9039": {
-"employment": 55130
+"employment": 55130,
+"mean": 101900.0,
+"median": 95200.0
 },
 "11-9041": {
-"employment": 220260
+"employment": 220260,
+"mean": 181540.0,
+"median": 171270.0
 },
 "11-9051": {
-"employment": 238430
+"employment": 238430,
+"mean": 74880.0,
+"median": 69390.0
 },
 "11-9071": {
-"employment": 5030
+"employment": 5030,
+"mean": 103050.0,
+"median": 93220.0
 },
 "11-9072": {
-"employment": 37980
+"employment": 37980,
+"mean": 89750.0,
+"median": 79520.0
 },
 "11-9081": {
-"employment": 42620
+"employment": 42620,
+"mean": 78740.0,
+"median": 69250.0
 },
 "11-9111": {
-"employment": 597080
+"employment": 597080,
+"mean": 140970.0,
+"median": 123860.0
 },
 "11-9121": {
-"employment": 108690
+"employment": 108690,
+"mean": 180250.0,
+"median": 167220.0
 },
 "11-9131": {
-"employment": 13810
+"employment": 13810,
+"mean": 97360.0,
+"median": 96660.0
 },
 "11-9141": {
-"employment": 311180
+"employment": 311180,
+"mean": 83710.0,
+"median": 69990.0
 },
 "11-9151": {
-"employment": 209330
+"employment": 209330,
+"mean": 88880.0,
+"median": 80390.0
 },
 "11-9161": {
-"employment": 13500
+"employment": 13500,
+"mean": 102420.0,
+"median": 93330.0
 },
 "11-9171": {
-"employment": 13910
+"employment": 13910,
+"mean": 92840.0,
+"median": 78790.0
 },
 "11-9179": {
-"employment": 10450
+"employment": 10450,
+"mean": 78190.0,
+"median": 69770.0
 },
 "11-9199": {
-"employment": 622190
+"employment": 622190,
+"mean": 153890.0,
+"median": 141900.0
 },
 "13-1011": {
-"employment": 12620
+"employment": 12620,
+"mean": 141580.0,
+"median": 82890.0
 },
 "13-1031": {
-"employment": 324230
+"employment": 324230,
+"mean": 80470.0,
+"median": 78000.0
 },
 "13-1032": {
-"employment": 11560
+"employment": 11560,
+"mean": 78900.0,
+"median": 78240.0
 },
 "13-1041": {
-"employment": 417070
+"employment": 417070,
+"mean": 88400.0,
+"median": 80730.0
 },
 "13-1051": {
-"employment": 224220
+"employment": 224220,
+"mean": 85390.0,
+"median": 78740.0
 },
 "13-1071": {
-"employment": 912430
+"employment": 912430,
+"mean": 81990.0,
+"median": 75940.0
 },
 "13-1074": {
-"employment": 310
+"employment": 310,
+"mean": 58470.0,
+"median": 58460.0
 },
 "13-1075": {
-"employment": 64810
+"employment": 64810,
+"mean": 98720.0,
+"median": 95420.0
 },
 "13-1081": {
-"employment": 251040
+"employment": 251040,
+"mean": 89730.0,
+"median": 82320.0
 },
 "13-1082": {
-"employment": 1066670
+"employment": 1066670,
+"mean": 110740.0,
+"median": 102320.0
 },
 "13-1111": {
-"employment": 898280
+"employment": 898280,
+"mean": 113790.0,
+"median": 101860.0
 },
 "13-1121": {
-"employment": 142860
+"employment": 142860,
+"mean": 66520.0,
+"median": 61160.0
 },
 "13-1131": {
-"employment": 111040
+"employment": 111040,
+"mean": 77200.0,
+"median": 72550.0
 },
 "13-1141": {
-"employment": 112380
+"employment": 112380,
+"mean": 84330.0,
+"median": 78210.0
 },
 "13-1151": {
-"employment": 458300
+"employment": 458300,
+"mean": 75550.0,
+"median": 69280.0
 },
 "13-1161": {
-"employment": 899580
+"employment": 899580,
+"mean": 89490.0,
+"median": 78760.0
 },
 "13-1199": {
-"employment": 1087090
+"employment": 1087090,
+"mean": 93970.0,
+"median": 83050.0
 },
 "13-2011": {
-"employment": 1449500
+"employment": 1449500,
+"mean": 94750.0,
+"median": 83680.0
 },
 "13-2031": {
-"employment": 47160
+"employment": 47160,
+"mean": 96370.0,
+"median": 91640.0
 },
 "13-2041": {
-"employment": 64390
+"employment": 64390,
+"mean": 100850.0,
+"median": 83510.0
 },
 "13-2051": {
-"employment": 361980
+"employment": 361980,
+"mean": 116800.0,
+"median": 102740.0
 },
 "13-2052": {
-"employment": 266800
+"employment": 266800,
+"mean": 156670.0,
+"median": 105070.0
 },
 "13-2053": {
-"employment": 105420
+"employment": 105420,
+"mean": 93700.0,
+"median": 81370.0
 },
 "13-2054": {
-"employment": 63850
+"employment": 63850,
+"mean": 124420.0,
+"median": 117330.0
 },
 "13-2061": {
-"employment": 67830
+"employment": 67830,
+"mean": 106240.0,
+"median": 94160.0
 },
 "13-2071": {
-"employment": 27770
+"employment": 27770,
+"mean": 57210.0,
+"median": 52230.0
 },
 "13-2072": {
-"employment": 274330
+"employment": 274330,
+"mean": 87790.0,
+"median": 76690.0
 },
 "13-2081": {
-"employment": 56610
+"employment": 56610,
+"mean": 70520.0,
+"median": 62370.0
 },
 "13-2082": {
-"employment": 76480
+"employment": 76480,
+"mean": 60930.0,
+"median": 54920.0
 },
 "13-2099": {
-"employment": 132130
+"employment": 132130,
+"mean": 93810.0,
+"median": 81100.0
 },
 "15-1211": {
-"employment": 519530
+"employment": 519530,
+"mean": 114610.0,
+"median": 105850.0
 },
 "15-1212": {
-"employment": 190650
+"employment": 190650,
+"mean": 132510.0,
+"median": 129180.0
 },
 "15-1221": {
-"employment": 37200
+"employment": 37200,
+"mean": 153930.0,
+"median": 140300.0
 },
 "15-1231": {
-"employment": 146190
+"employment": 146190,
+"mean": 81870.0,
+"median": 76220.0
 },
 "15-1232": {
-"employment": 717190
+"employment": 717190,
+"mean": 67330.0,
+"median": 61860.0
 },
 "15-1241": {
-"employment": 179740
+"employment": 179740,
+"mean": 139580.0,
+"median": 134050.0
 },
 "15-1242": {
-"employment": 69990
+"employment": 69990,
+"mean": 110090.0,
+"median": 104620.0
 },
 "15-1243": {
-"employment": 67140
+"employment": 67140,
+"mean": 144440.0,
+"median": 139500.0
 },
 "15-1244": {
-"employment": 314340
+"employment": 314340,
+"mean": 103680.0,
+"median": 99130.0
 },
 "15-1251": {
-"employment": 92230
+"employment": 92230,
+"mean": 105170.0,
+"median": 100390.0
 },
 "15-1252": {
-"employment": 1687890
+"employment": 1687890,
+"mean": 148100.0,
+"median": 135980.0
 },
 "15-1253": {
-"employment": 186740
+"employment": 186740,
+"mean": 111490.0,
+"median": 104300.0
 },
 "15-1254": {
-"employment": 70190
+"employment": 70190,
+"mean": 98770.0,
+"median": 92650.0
 },
 "15-1255": {
-"employment": 113330
+"employment": 113330,
+"mean": 117490.0,
+"median": 104000.0
 },
 "15-1299": {
-"employment": 435370
+"employment": 435370,
+"mean": 122230.0,
+"median": 116580.0
 },
 "15-2011": {
-"employment": 26670
+"employment": 26670,
+"mean": 141480.0,
+"median": 130000.0
 },
 "15-2021": {
-"employment": 2030
+"employment": 2030,
+"mean": 129260.0,
+"median": 126710.0
 },
 "15-2031": {
-"employment": 108510
+"employment": 108510,
+"mean": 99730.0,
+"median": 88940.0
 },
 "15-2041": {
-"employment": 29030
+"employment": 29030,
+"mean": 115700.0,
+"median": 105650.0
 },
 "15-2051": {
-"employment": 262440
+"employment": 262440,
+"mean": 126800.0,
+"median": 120230.0
 },
 "15-2099": {
-"employment": 3720
+"employment": 3720,
+"mean": 91550.0,
+"median": 81490.0
 },
 "17-1011": {
-"employment": 106770
+"employment": 106770,
+"mean": 106260.0,
+"median": 99280.0
 },
 "17-1012": {
-"employment": 19600
+"employment": 19600,
+"mean": 88780.0,
+"median": 79870.0
 },
 "17-1021": {
-"employment": 14260
+"employment": 14260,
+"mean": 86690.0,
+"median": 81390.0
 },
 "17-1022": {
-"employment": 50830
+"employment": 50830,
+"mean": 80570.0,
+"median": 75440.0
 },
 "17-2011": {
-"employment": 67710
+"employment": 67710,
+"mean": 142060.0,
+"median": 134960.0
 },
 "17-2021": {
-"employment": 1480
+"employment": 1480,
+"mean": 108230.0,
+"median": 98590.0
 },
 "17-2031": {
-"employment": 23480
+"employment": 23480,
+"mean": 116890.0,
+"median": 109370.0
 },
 "17-2041": {
-"employment": 21070
+"employment": 21070,
+"mean": 129980.0,
+"median": 125040.0
 },
 "17-2051": {
-"employment": 367840
+"employment": 367840,
+"mean": 108670.0,
+"median": 100840.0
 },
 "17-2061": {
-"employment": 76660
+"employment": 76660,
+"mean": 162670.0,
+"median": 161740.0
 },
 "17-2071": {
-"employment": 198750
+"employment": 198750,
+"mean": 125100.0,
+"median": 120630.0
 },
 "17-2072": {
-"employment": 96900
+"employment": 96900,
+"mean": 137280.0,
+"median": 130220.0
 },
 "17-2081": {
-"employment": 38340
+"employment": 38340,
+"mean": 112910.0,
+"median": 107110.0
 },
 "17-2111": {
-"employment": 21450
+"employment": 21450,
+"mean": 119770.0,
+"median": 115160.0
 },
 "17-2112": {
-"employment": 365740
+"employment": 365740,
+"mean": 109900.0,
+"median": 102440.0
 },
 "17-2121": {
-"employment": 8250
+"employment": 8250,
+"mean": 124180.0,
+"median": 112230.0
 },
 "17-2131": {
-"employment": 22770
+"employment": 22770,
+"mean": 120250.0,
+"median": 112860.0
 },
 "17-2141": {
-"employment": 296810
+"employment": 296810,
+"mean": 113610.0,
+"median": 104110.0
 },
 "17-2151": {
-"employment": 6080
+"employment": 6080,
+"mean": 115410.0,
+"median": 106220.0
 },
 "17-2161": {
-"employment": 15280
+"employment": 15280,
+"mean": 140420.0,
+"median": 133970.0
 },
 "17-2171": {
-"employment": 18060
+"employment": 18060,
+"mean": 157150.0,
+"median": 144910.0
 },
 "17-2199": {
-"employment": 154070
+"employment": 154070,
+"mean": 125330.0,
+"median": 122930.0
 },
 "17-3011": {
-"employment": 103700
+"employment": 103700,
+"mean": 70740.0,
+"median": 66150.0
 },
 "17-3012": {
-"employment": 17920
+"employment": 17920,
+"mean": 81280.0,
+"median": 76870.0
 },
 "17-3013": {
-"employment": 39960
+"employment": 39960,
+"mean": 75060.0,
+"median": 71550.0
 },
 "17-3019": {
-"employment": 14470
+"employment": 14470,
+"mean": 68250.0,
+"median": 63520.0
 },
 "17-3021": {
-"employment": 11280
+"employment": 11280,
+"mean": 91310.0,
+"median": 82890.0
 },
 "17-3022": {
-"employment": 68520
+"employment": 68520,
+"mean": 68990.0,
+"median": 64950.0
 },
 "17-3023": {
-"employment": 95130
+"employment": 95130,
+"mean": 80680.0,
+"median": 78190.0
 },
 "17-3024": {
-"employment": 15520
+"employment": 15520,
+"mean": 76420.0,
+"median": 73900.0
 },
 "17-3025": {
-"employment": 12190
+"employment": 12190,
+"mean": 64870.0,
+"median": 59920.0
 },
 "17-3026": {
-"employment": 75570
+"employment": 75570,
+"mean": 70700.0,
+"median": 66120.0
 },
 "17-3027": {
-"employment": 36190
+"employment": 36190,
+"mean": 76380.0,
+"median": 74510.0
 },
 "17-3028": {
-"employment": 16540
+"employment": 16540,
+"mean": 74170.0,
+"median": 67820.0
 },
 "17-3029": {
-"employment": 59930
+"employment": 59930,
+"mean": 80960.0,
+"median": 78350.0
 },
 "17-3031": {
-"employment": 58010
+"employment": 58010,
+"mean": 58000.0,
+"median": 54240.0
 },
 "19-1011": {
-"employment": 3100
+"employment": 3100,
+"mean": 88350.0,
+"median": 68940.0
 },
 "19-1012": {
-"employment": 13060
+"employment": 13060,
+"mean": 95360.0,
+"median": 88720.0
 },
 "19-1013": {
-"employment": 15730
+"employment": 15730,
+"mean": 87720.0,
+"median": 78850.0
 },
 "19-1021": {
-"employment": 33830
+"employment": 33830,
+"mean": 129840.0,
+"median": 127410.0
 },
 "19-1022": {
-"employment": 18940
+"employment": 18940,
+"mean": 97600.0,
+"median": 87990.0
 },
 "19-1023": {
-"employment": 18120
+"employment": 18120,
+"mean": 83020.0,
+"median": 76780.0
 },
 "19-1029": {
-"employment": 55850
+"employment": 55850,
+"mean": 106330.0,
+"median": 98920.0
 },
 "19-1031": {
-"employment": 25950
+"employment": 25950,
+"mean": 77130.0,
+"median": 73010.0
 },
 "19-1032": {
-"employment": 10430
+"employment": 10430,
+"mean": 79170.0,
+"median": 76400.0
 },
 "19-1041": {
-"employment": 12090
+"employment": 12090,
+"mean": 97890.0,
+"median": 87220.0
 },
 "19-1042": {
-"employment": 172340
+"employment": 172340,
+"mean": 116840.0,
+"median": 103410.0
 },
 "19-1099": {
-"employment": 7460
+"employment": 7460,
+"mean": 107860.0,
+"median": 93750.0
 },
 "19-2011": {
-"employment": 2120
+"employment": 2120,
+"mean": 132920.0,
+"median": 128820.0
 },
 "19-2012": {
-"employment": 20430
+"employment": 20430,
+"mean": 171180.0,
+"median": 172250.0
 },
 "19-2021": {
-"employment": 10000
+"employment": 10000,
+"mean": 106110.0,
+"median": 99070.0
 },
 "19-2031": {
-"employment": 82770
+"employment": 82770,
+"mean": 100450.0,
+"median": 91240.0
 },
 "19-2032": {
-"employment": 8470
+"employment": 8470,
+"mean": 126180.0,
+"median": 117790.0
 },
 "19-2041": {
-"employment": 89250
+"employment": 89250,
+"mean": 91680.0,
+"median": 82220.0
 },
 "19-2042": {
-"employment": 23470
+"employment": 23470,
+"mean": 116150.0,
+"median": 101920.0
 },
 "19-2043": {
-"employment": 5850
+"employment": 5850,
+"mean": 103600.0,
+"median": 96600.0
 },
 "19-2099": {
-"employment": 22300
+"employment": 22300,
+"mean": 129230.0,
+"median": 122570.0
 },
 "19-3011": {
-"employment": 17790
+"employment": 17790,
+"mean": 142130.0,
+"median": 124720.0
 },
 "19-3022": {
-"employment": 8290
+"employment": 8290,
+"mean": 79580.0,
+"median": 69460.0
 },
 "19-3032": {
-"employment": 790
+"employment": 790,
+"mean": 170230.0,
+"median": 193950.0
 },
 "19-3033": {
-"employment": 75990
+"employment": 75990,
+"mean": 112750.0,
+"median": 100580.0
 },
 "19-3034": {
-"employment": 63940
+"employment": 63940,
+"mean": 99160.0,
+"median": 95990.0
 },
 "19-3039": {
-"employment": 18820
+"employment": 18820,
+"mean": 111210.0,
+"median": 110840.0
 },
 "19-3041": {
-"employment": 2260
+"employment": 2260,
+"mean": 114920.0,
+"median": 106030.0
 },
 "19-3051": {
-"employment": 44230
+"employment": 44230,
+"mean": 94750.0,
+"median": 89320.0
 },
 "19-3091": {
-"employment": 8990
+"employment": 8990,
+"mean": 75620.0,
+"median": 70770.0
 },
 "19-3092": {
-"employment": 1400
+"employment": 1400,
+"mean": 102350.0,
+"median": 102040.0
 },
 "19-3093": {
-"employment": 3450
+"employment": 3450,
+"mean": 81240.0,
+"median": 76750.0
 },
 "19-3094": {
-"employment": 5540
+"employment": 5540,
+"mean": 142510.0,
+"median": 142080.0
 },
 "19-3099": {
-"employment": 37100
+"employment": 37100,
+"mean": 107690.0,
+"median": 101110.0
 },
 "19-4012": {
-"employment": 15130
+"employment": 15130,
+"mean": 53840.0,
+"median": 49630.0
 },
 "19-4013": {
-"employment": 14600
+"employment": 14600,
+"mean": 56660.0,
+"median": 52130.0
 },
 "19-4021": {
-"employment": 69620
+"employment": 69620,
+"mean": 61380.0,
+"median": 57510.0
 },
 "19-4031": {
-"employment": 57540
+"employment": 57540,
+"mean": 63900.0,
+"median": 60390.0
 },
 "19-4042": {
-"employment": 34670
+"employment": 34670,
+"mean": 60800.0,
+"median": 55090.0
 },
 "19-4043": {
-"employment": 6980
+"employment": 6980,
+"mean": 61870.0,
+"median": 53350.0
 },
 "19-4044": {
-"employment": 2840
+"employment": 2840,
+"mean": 69530.0,
+"median": 64790.0
 },
 "19-4051": {
-"employment": 6470
+"employment": 6470,
+"mean": 108940.0,
+"median": 110240.0
 },
 "19-4061": {
-"employment": 30640
+"employment": 30640,
+"mean": 66140.0,
+"median": 61990.0
 },
 "19-4071": {
-"employment": 30410
+"employment": 30410,
+"mean": 59060.0,
+"median": 54560.0
 },
 "19-4092": {
-"employment": 19120
+"employment": 19120,
+"mean": 79200.0,
+"median": 72060.0
 },
 "19-4099": {
-"employment": 73910
+"employment": 73910,
+"mean": 66280.0,
+"median": 62280.0
 },
 "19-5011": {
-"employment": 140610
+"employment": 140610,
+"mean": 93860.0,
+"median": 90150.0
 },
 "19-5012": {
-"employment": 30590
+"employment": 30590,
+"mean": 68120.0,
+"median": 61560.0
 },
 "21-1012": {
-"employment": 353310
+"employment": 353310,
+"mean": 71430.0,
+"median": 64330.0
 },
 "21-1013": {
-"employment": 66740
+"employment": 66740,
+"mean": 76960.0,
+"median": 66940.0
 },
 "21-1015": {
-"employment": 94740
+"employment": 94740,
+"mean": 51820.0,
+"median": 46850.0
 },
 "21-1019": {
-"employment": 28580
+"employment": 28580,
+"mean": 58210.0,
+"median": 50860.0
 },
 "21-1021": {
-"employment": 392550
+"employment": 392550,
+"mean": 64000.0,
+"median": 59550.0
 },
 "21-1022": {
-"employment": 187630
+"employment": 187630,
+"mean": 71790.0,
+"median": 67880.0
 },
 "21-1023": {
-"employment": 132810
+"employment": 132810,
+"mean": 68030.0,
+"median": 60280.0
 },
 "21-1029": {
-"employment": 62930
+"employment": 62930,
+"mean": 75910.0,
+"median": 71900.0
 },
 "21-1091": {
-"employment": 65690
+"employment": 65690,
+"mean": 73280.0,
+"median": 64070.0
 },
 "21-1092": {
-"employment": 89390
+"employment": 89390,
+"mean": 73130.0,
+"median": 66270.0
 },
 "21-1093": {
-"employment": 437860
+"employment": 437860,
+"mean": 47690.0,
+"median": 45930.0
 },
 "21-1094": {
-"employment": 61660
+"employment": 61660,
+"mean": 56180.0,
+"median": 51850.0
 },
 "21-1099": {
-"employment": 107730
+"employment": 107730,
+"mean": 59590.0,
+"median": 56730.0
 },
 "21-2011": {
-"employment": 57200
+"employment": 57200,
+"mean": 66860.0,
+"median": 60810.0
 },
 "21-2021": {
-"employment": 22160
+"employment": 22160,
+"mean": 62100.0,
+"median": 52100.0
 },
 "21-2099": {
-"employment": 15760
+"employment": 15760,
+"mean": 53870.0,
+"median": 45280.0
 },
 "23-1011": {
-"employment": 754500
+"employment": 754500,
+"mean": 185840.0,
+"median": 159670.0
 },
 "23-1012": {
-"employment": 13290
+"employment": 13290,
+"mean": 72950.0,
+"median": 64920.0
 },
 "23-1021": {
-"employment": 16370
+"employment": 16370,
+"mean": 125990.0,
+"median": 117860.0
 },
 "23-1022": {
-"employment": 9210
+"employment": 9210,
+"mean": 91010.0,
+"median": 75530.0
 },
 "23-1023": {
-"employment": 24030
+"employment": 24030,
+"mean": 143830.0,
+"median": 153990.0
 },
 "23-2011": {
-"employment": 392880
+"employment": 392880,
+"mean": 69700.0,
+"median": 62890.0
 },
 "23-2093": {
-"employment": 48580
+"employment": 48580,
+"mean": 62350.0,
+"median": 58650.0
 },
 "23-2099": {
-"employment": 46760
+"employment": 46760,
+"mean": 89660.0,
+"median": 72110.0
 },
 "25-1011": {
-"employment": 82150
+"employment": 82150,
+"mean": 114720.0,
+"median": 99080.0
 },
 "25-1021": {
-"employment": 35480
+"employment": 35480,
+"mean": 104420.0,
+"median": 96980.0
 },
 "25-1022": {
-"employment": 47670
+"employment": 47670,
+"mean": 91550.0,
+"median": 79940.0
 },
 "25-1031": {
-"employment": 7700
+"employment": 7700,
+"mean": 101250.0,
+"median": 96870.0
 },
 "25-1032": {
-"employment": 40270
+"employment": 40270,
+"mean": 124520.0,
+"median": 109270.0
 },
 "25-1041": {
-"employment": 8920
+"employment": 8920,
+"mean": 102050.0,
+"median": 98700.0
 },
 "25-1042": {
-"employment": 50190
+"employment": 50190,
+"mean": 102840.0,
+"median": 84620.0
 },
 "25-1043": {
-"employment": 1520
+"employment": 1520,
+"mean": 102450.0,
+"median": 101420.0
 },
 "25-1051": {
-"employment": 9900
+"employment": 9900,
+"mean": 116020.0,
+"median": 103170.0
 },
 "25-1052": {
-"employment": 19980
+"employment": 19980,
+"mean": 105210.0,
+"median": 93250.0
 },
 "25-1053": {
-"employment": 6690
+"employment": 6690,
+"mean": 103610.0,
+"median": 94980.0
 },
 "25-1054": {
-"employment": 13090
+"employment": 13090,
+"mean": 111460.0,
+"median": 100310.0
 },
 "25-1061": {
-"employment": 5240
+"employment": 5240,
+"mean": 106880.0,
+"median": 99650.0
 },
 "25-1062": {
-"employment": 11300
+"employment": 11300,
+"mean": 98330.0,
+"median": 85020.0
 },
 "25-1063": {
-"employment": 11560
+"employment": 11560,
+"mean": 138850.0,
+"median": 123920.0
 },
 "25-1064": {
-"employment": 3330
+"employment": 3330,
+"mean": 102350.0,
+"median": 97590.0
 },
 "25-1065": {
-"employment": 16970
+"employment": 16970,
+"mean": 108100.0,
+"median": 98070.0
 },
 "25-1066": {
-"employment": 41530
+"employment": 41530,
+"mean": 93860.0,
+"median": 80340.0
 },
 "25-1067": {
-"employment": 11850
+"employment": 11850,
+"mean": 96980.0,
+"median": 84290.0
 },
 "25-1069": {
-"employment": 16580
+"employment": 16580,
+"mean": 88390.0,
+"median": 72990.0
 },
 "25-1071": {
-"employment": 221270
+"employment": 221270,
+"mean": 147570.0,
+"median": 107310.0
 },
 "25-1072": {
-"employment": 77960
+"employment": 77960,
+"mean": 86410.0,
+"median": 80250.0
 },
 "25-1081": {
-"employment": 60830
+"employment": 60830,
+"mean": 79350.0,
+"median": 75350.0
 },
 "25-1082": {
-"employment": 3630
+"employment": 3630,
+"mean": 88110.0,
+"median": 80340.0
 },
 "25-1111": {
-"employment": 13150
+"employment": 13150,
+"mean": 87550.0,
+"median": 76590.0
 },
 "25-1112": {
-"employment": 20060
+"employment": 20060,
+"mean": 144770.0,
+"median": 128500.0
 },
 "25-1113": {
-"employment": 12610
+"employment": 12610,
+"mean": 83940.0,
+"median": 77570.0
 },
 "25-1121": {
-"employment": 93560
+"employment": 93560,
+"mean": 94700.0,
+"median": 78620.0
 },
 "25-1122": {
-"employment": 29420
+"employment": 29420,
+"mean": 90010.0,
+"median": 78580.0
 },
 "25-1123": {
-"employment": 57720
+"employment": 57720,
+"mean": 89580.0,
+"median": 78760.0
 },
 "25-1124": {
-"employment": 19830
+"employment": 19830,
+"mean": 89990.0,
+"median": 79350.0
 },
 "25-1125": {
-"employment": 18790
+"employment": 18790,
+"mean": 96580.0,
+"median": 83820.0
 },
 "25-1126": {
-"employment": 20460
+"employment": 20460,
+"mean": 92040.0,
+"median": 80260.0
 },
 "25-1192": {
-"employment": 2770
+"employment": 2770,
+"mean": 81940.0,
+"median": 75870.0
 },
 "25-1193": {
-"employment": 12630
+"employment": 12630,
+"mean": 86620.0,
+"median": 77270.0
 },
 "25-1194": {
-"employment": 114110
+"employment": 114110,
+"mean": 72060.0,
+"median": 63820.0
 },
 "25-1199": {
-"employment": 149840
+"employment": 149840,
+"mean": 90630.0,
+"median": 77640.0
 },
 "25-2011": {
-"employment": 478780
+"employment": 478780,
+"mean": 43030.0,
+"median": 38140.0
 },
 "25-2012": {
-"employment": 108870
+"employment": 108870,
+"mean": 69370.0,
+"median": 62680.0
 },
 "25-2021": {
-"employment": 1388390
+"employment": 1388390,
+"mean": 72650.0,
+"median": 63970.0
 },
 "25-2022": {
-"employment": 620090
+"employment": 620090,
+"mean": 72030.0,
+"median": 64370.0
 },
 "25-2023": {
-"employment": 16870
+"employment": 16870,
+"mean": 71590.0,
+"median": 65030.0
 },
 "25-2031": {
-"employment": 1065210
+"employment": 1065210,
+"mean": 76320.0,
+"median": 72040.0
 },
 "25-2032": {
-"employment": 111420
+"employment": 111420,
+"mean": 72680.0,
+"median": 66270.0
 },
 "25-2051": {
-"employment": 29510
+"employment": 29510,
+"mean": 76380.0,
+"median": 64830.0
 },
 "25-2057": {
-"employment": 95200
+"employment": 95200,
+"mean": 73780.0,
+"median": 66810.0
 },
 "25-2058": {
-"employment": 163930
+"employment": 163930,
+"mean": 77260.0,
+"median": 74260.0
 },
 "25-2059": {
-"employment": 33930
+"employment": 33930,
+"mean": 79750.0,
+"median": 76580.0
 },
 "25-3011": {
-"employment": 37310
+"employment": 37310,
+"mean": 65860.0,
+"median": 61540.0
 },
 "25-3021": {
-"employment": 332110
+"employment": 332110,
+"mean": 54740.0,
+"median": 46800.0
 },
 "25-3031": {
-"employment": 524770
+"employment": 524770,
+"mean": 46420.0,
+"median": 41670.0
 },
 "25-3041": {
-"employment": 175070
+"employment": 175070,
+"mean": 48050.0,
+"median": 43350.0
 },
 "25-3099": {
-"employment": 113790
+"employment": 113790,
+"mean": 73880.0,
+"median": 66140.0
 },
 "25-4011": {
-"employment": 7970
+"employment": 7970,
+"mean": 70640.0,
+"median": 64550.0
 },
 "25-4012": {
-"employment": 12150
+"employment": 12150,
+"mean": 71560.0,
+"median": 63420.0
 },
 "25-4013": {
-"employment": 12310
+"employment": 12310,
+"mean": 57410.0,
+"median": 51440.0
 },
 "25-4022": {
-"employment": 133790
+"employment": 133790,
+"mean": 72840.0,
+"median": 68270.0
 },
 "25-4031": {
-"employment": 68690
+"employment": 68690,
+"mean": 45500.0,
+"median": 44580.0
 },
 "25-9021": {
-"employment": 8220
+"employment": 8220,
+"mean": 61060.0,
+"median": 60220.0
 },
 "25-9031": {
-"employment": 227760
+"employment": 227760,
+"mean": 80920.0,
+"median": 77440.0
 },
 "25-9044": {
-"employment": 164090
+"employment": 164090,
+"mean": 47670.0,
+"median": 42910.0
 },
 "25-9099": {
-"employment": 118590
+"employment": 118590,
+"mean": 59060.0,
+"median": 50890.0
 },
 "27-1011": {
-"employment": 53070
+"employment": 53070,
+"mean": 129440.0,
+"median": 114850.0
 },
 "27-1012": {
-"employment": 4580
+"employment": 4580,
+"mean": 49740.0,
+"median": 46080.0
 },
 "27-1013": {
-"employment": 11220
+"employment": 11220,
+"mean": 73150.0,
+"median": 55490.0
 },
 "27-1014": {
-"employment": 19970
+"employment": 19970,
+"mean": 112870.0,
+"median": 102030.0
 },
 "27-1019": {
-"employment": 6930
+"employment": 6930,
+"mean": 80530.0,
+"median": 71240.0
 },
 "27-1021": {
-"employment": 33490
+"employment": 33490,
+"mean": 93260.0,
+"median": 83910.0
 },
 "27-1022": {
-"employment": 21450
+"employment": 21450,
+"mean": 91230.0,
+"median": 80960.0
 },
 "27-1023": {
-"employment": 40590
+"employment": 40590,
+"mean": 39520.0,
+"median": 37360.0
 },
 "27-1024": {
-"employment": 197830
+"employment": 197830,
+"mean": 70560.0,
+"median": 62960.0
 },
 "27-1025": {
-"employment": 71500
+"employment": 71500,
+"mean": 74540.0,
+"median": 67190.0
 },
 "27-1026": {
-"employment": 165220
+"employment": 165220,
+"mean": 42830.0,
+"median": 39390.0
 },
 "27-1027": {
-"employment": 10630
+"employment": 10630,
+"mean": 83160.0,
+"median": 75240.0
 },
 "27-1029": {
-"employment": 9480
+"employment": 9480,
+"mean": 79090.0,
+"median": 64950.0
 },
 "27-2011": {
 "employment": 55000
 },
 "27-2012": {
-"employment": 143120
+"employment": 143120,
+"mean": 113300.0,
+"median": 90360.0
 },
 "27-2021": {
-"employment": 15070
+"employment": 15070,
+"mean": 206180.0,
+"median": 66710.0
 },
 "27-2022": {
-"employment": 248950
+"employment": 248950,
+"mean": 60160.0,
+"median": 47320.0
 },
 "27-2023": {
-"employment": 15780
+"employment": 15780,
+"mean": 53010.0,
+"median": 40710.0
 },
 "27-2031": {
 "employment": 8130
 },
 "27-2032": {
-"employment": 2860
+"employment": 2860,
+"mean": 73100.0,
+"median": 55310.0
 },
 "27-2041": {
-"employment": 12540
+"employment": 12540,
+"mean": 90470.0,
+"median": 73710.0
 },
 "27-2042": {
 "employment": 36180
@@ -847,1612 +1401,2684 @@
 "employment": 16550
 },
 "27-3011": {
-"employment": 21240
+"employment": 21240,
+"mean": 78720.0,
+"median": 47340.0
 },
 "27-3023": {
-"employment": 39250
+"employment": 39250,
+"mean": 102460.0,
+"median": 62200.0
 },
 "27-3031": {
-"employment": 283380
+"employment": 283380,
+"mean": 84120.0,
+"median": 74750.0
 },
 "27-3041": {
-"employment": 91690
+"employment": 91690,
+"mean": 90060.0,
+"median": 77920.0
 },
 "27-3042": {
-"employment": 45500
+"employment": 45500,
+"mean": 96970.0,
+"median": 90390.0
 },
 "27-3043": {
-"employment": 47940
+"employment": 47940,
+"mean": 86090.0,
+"median": 76910.0
 },
 "27-3091": {
-"employment": 52060
+"employment": 52060,
+"mean": 66360.0,
+"median": 60170.0
 },
 "27-3092": {
-"employment": 12870
+"employment": 12870,
+"mean": 78760.0,
+"median": 72420.0
 },
 "27-3099": {
-"employment": 19590
+"employment": 19590,
+"mean": 83860.0,
+"median": 73620.0
 },
 "27-4011": {
-"employment": 70230
+"employment": 70230,
+"mean": 64630.0,
+"median": 58100.0
 },
 "27-4012": {
-"employment": 21110
+"employment": 21110,
+"mean": 67960.0,
+"median": 59570.0
 },
 "27-4014": {
-"employment": 13080
+"employment": 13080,
+"mean": 81390.0,
+"median": 73130.0
 },
 "27-4015": {
-"employment": 8900
+"employment": 8900,
+"mean": 78380.0,
+"median": 68060.0
 },
 "27-4021": {
-"employment": 51760
+"employment": 51760,
+"mean": 55410.0,
+"median": 44660.0
 },
 "27-4031": {
-"employment": 21550
+"employment": 21550,
+"mean": 83210.0,
+"median": 74990.0
 },
 "27-4032": {
-"employment": 25610
+"employment": 25610,
+"mean": 86130.0,
+"median": 75420.0
 },
 "27-4099": {
-"employment": 12450
+"employment": 12450,
+"mean": 81040.0,
+"median": 70720.0
 },
 "29-1011": {
-"employment": 39630
+"employment": 39630,
+"mean": 90520.0,
+"median": 79200.0
 },
 "29-1021": {
-"employment": 124390
+"employment": 124390,
+"mean": 191350.0,
+"median": 170950.0
 },
 "29-1022": {
-"employment": 4910
+"employment": 4910,
+"mean": 346490.0,
+"median": 352220.0
 },
 "29-1023": {
-"employment": 6210
+"employment": 6210,
+"mean": 259400.0,
+"median": 289140.0
 },
 "29-1024": {
-"employment": 870
+"employment": 870,
+"mean": 268630.0,
+"median": 311180.0
 },
 "29-1029": {
-"employment": 5230
+"employment": 5230,
+"mean": 247930.0,
+"median": 224990.0
 },
 "29-1031": {
-"employment": 77570
+"employment": 77570,
+"mean": 77130.0,
+"median": 76400.0
 },
 "29-1041": {
-"employment": 42790
+"employment": 42790,
+"mean": 141550.0,
+"median": 136570.0
 },
 "29-1051": {
-"employment": 321970
+"employment": 321970,
+"mean": 140920.0,
+"median": 140910.0
 },
 "29-1071": {
-"employment": 162150
+"employment": 162150,
+"mean": 141280.0,
+"median": 135880.0
 },
 "29-1081": {
-"employment": 9680
+"employment": 9680,
+"mean": 175480.0,
+"median": 160300.0
 },
 "29-1122": {
-"employment": 162450
+"employment": 162450,
+"mean": 101280.0,
+"median": 100330.0
 },
 "29-1123": {
-"employment": 267330
+"employment": 267330,
+"mean": 105280.0,
+"median": 102760.0
 },
 "29-1124": {
-"employment": 17070
+"employment": 17070,
+"mean": 114990.0,
+"median": 105310.0
 },
 "29-1125": {
-"employment": 14930
+"employment": 14930,
+"mean": 67630.0,
+"median": 61960.0
 },
 "29-1126": {
-"employment": 139790
+"employment": 139790,
+"mean": 87300.0,
+"median": 82280.0
 },
 "29-1127": {
-"employment": 183390
+"employment": 183390,
+"mean": 98170.0,
+"median": 97870.0
 },
 "29-1128": {
-"employment": 8560
+"employment": 8560,
+"mean": 60940.0,
+"median": 59460.0
 },
 "29-1129": {
-"employment": 22640
+"employment": 22640,
+"mean": 90420.0,
+"median": 77930.0
 },
 "29-1131": {
-"employment": 83900
+"employment": 83900,
+"mean": 142680.0,
+"median": 130100.0
 },
 "29-1141": {
-"employment": 3379720
+"employment": 3379720,
+"mean": 101420.0,
+"median": 97550.0
 },
 "29-1151": {
-"employment": 51840
+"employment": 51840,
+"mean": 248320.0,
+"median": 236590.0
 },
 "29-1161": {
-"employment": 7920
+"employment": 7920,
+"mean": 136980.0,
+"median": 134040.0
 },
 "29-1171": {
-"employment": 323040
+"employment": 323040,
+"mean": 137300.0,
+"median": 132300.0
 },
 "29-1181": {
-"employment": 13660
+"employment": 13660,
+"mean": 97740.0,
+"median": 95780.0
 },
 "29-1211": {
-"employment": 38760
+"employment": 38760,
+"mean": 360570.0,
+"median": 391490.0
 },
 "29-1212": {
-"employment": 17290
+"employment": 17290,
+"mean": 454940.0,
+"median": 496010.0
 },
 "29-1213": {
-"employment": 11370
+"employment": 11370,
+"mean": 323530.0,
+"median": 328730.0
 },
 "29-1214": {
-"employment": 32880
+"employment": 32880,
+"mean": 317480.0,
+"median": 335550.0
 },
 "29-1215": {
-"employment": 107510
+"employment": 107510,
+"mean": 255820.0,
+"median": 244180.0
 },
 "29-1216": {
-"employment": 67150
+"employment": 67150,
+"mean": 267200.0,
+"median": 256560.0
 },
 "29-1217": {
-"employment": 10590
+"employment": 10590,
+"mean": 267630.0,
+"median": 248560.0
 },
 "29-1218": {
-"employment": 21260
+"employment": 21260,
+"mean": 279040.0,
+"median": 292910.0
 },
 "29-1221": {
-"employment": 39390
+"employment": 39390,
+"mean": 212110.0,
+"median": 210040.0
 },
 "29-1222": {
-"employment": 11110
+"employment": 11110,
+"mean": 285420.0,
+"median": 312400.0
 },
 "29-1223": {
-"employment": 27980
+"employment": 27980,
+"mean": 269940.0,
+"median": 281870.0
 },
 "29-1224": {
-"employment": 26770
+"employment": 26770,
+"mean": 381530.0,
+"median": 420860.0
 },
 "29-1229": {
-"employment": 342720
+"employment": 342720,
+"mean": 262040.0,
+"median": 265930.0
 },
 "29-1241": {
-"employment": 8950
+"employment": 8950,
+"mean": 304650.0,
+"median": 300080.0
 },
 "29-1242": {
-"employment": 14100
+"employment": 14100,
+"mean": 373570.0,
+"median": 358550.0
 },
 "29-1243": {
-"employment": 1190
+"employment": 1190,
+"mean": 502050.0,
+"median": 559030.0
 },
 "29-1249": {
-"employment": 25140
+"employment": 25140,
+"mean": 373930.0,
+"median": 414010.0
 },
 "29-1291": {
-"employment": 7830
+"employment": 7830,
+"mean": 87020.0,
+"median": 76040.0
 },
 "29-1292": {
-"employment": 222740
+"employment": 222740,
+"mean": 98990.0,
+"median": 98100.0
 },
 "29-1299": {
-"employment": 28630
+"employment": 28630,
+"mean": 127660.0,
+"median": 115210.0
 },
 "29-2031": {
-"employment": 62960
+"employment": 62960,
+"mean": 76940.0,
+"median": 74310.0
 },
 "29-2032": {
-"employment": 90160
+"employment": 90160,
+"mean": 97240.0,
+"median": 96590.0
 },
 "29-2033": {
-"employment": 17080
+"employment": 17080,
+"mean": 105160.0,
+"median": 101370.0
 },
 "29-2034": {
-"employment": 230490
+"employment": 230490,
+"mean": 83840.0,
+"median": 80110.0
 },
 "29-2035": {
-"employment": 43390
+"employment": 43390,
+"mean": 96120.0,
+"median": 95480.0
 },
 "29-2036": {
-"employment": 3410
+"employment": 3410,
+"mean": 148500.0,
+"median": 147470.0
 },
 "29-2042": {
-"employment": 180510
+"employment": 180510,
+"mean": 46830.0,
+"median": 44470.0
 },
 "29-2043": {
-"employment": 100610
+"employment": 100610,
+"mean": 63360.0,
+"median": 60600.0
 },
 "29-2051": {
-"employment": 31560
+"employment": 31560,
+"mean": 40630.0,
+"median": 37640.0
 },
 "29-2052": {
-"employment": 471680
+"employment": 471680,
+"mean": 46620.0,
+"median": 45750.0
 },
 "29-2053": {
-"employment": 156960
+"employment": 156960,
+"mean": 46610.0,
+"median": 45130.0
 },
 "29-2055": {
-"employment": 117460
+"employment": 117460,
+"mean": 68710.0,
+"median": 64650.0
 },
 "29-2056": {
-"employment": 129140
+"employment": 129140,
+"mean": 49120.0,
+"median": 47380.0
 },
 "29-2057": {
-"employment": 71010
+"employment": 71010,
+"mean": 47060.0,
+"median": 45570.0
 },
 "29-2061": {
-"employment": 648410
+"employment": 648410,
+"mean": 67050.0,
+"median": 64400.0
 },
 "29-2072": {
-"employment": 194720
+"employment": 194720,
+"mean": 56790.0,
+"median": 51140.0
 },
 "29-2081": {
-"employment": 73530
+"employment": 73530,
+"mean": 51770.0,
+"median": 47260.0
 },
 "29-2091": {
-"employment": 9390
+"employment": 9390,
+"mean": 83740.0,
+"median": 81110.0
 },
 "29-2092": {
-"employment": 11270
+"employment": 11270,
+"mean": 66370.0,
+"median": 65160.0
 },
 "29-2099": {
-"employment": 182610
+"employment": 182610,
+"mean": 58710.0,
+"median": 50290.0
 },
 "29-9021": {
-"employment": 38100
+"employment": 38100,
+"mean": 74970.0,
+"median": 68020.0
 },
 "29-9091": {
-"employment": 30500
+"employment": 30500,
+"mean": 66620.0,
+"median": 62520.0
 },
 "29-9092": {
-"employment": 3740
+"employment": 3740,
+"mean": 104620.0,
+"median": 100040.0
 },
 "29-9093": {
-"employment": 22270
+"employment": 22270,
+"mean": 72710.0,
+"median": 66800.0
 },
 "29-9099": {
-"employment": 35010
+"employment": 35010,
+"mean": 76720.0,
+"median": 65790.0
 },
 "31-1131": {
-"employment": 1448910
+"employment": 1448910,
+"mean": 42700.0,
+"median": 42260.0
 },
 "31-1132": {
-"employment": 52440
+"employment": 52440,
+"mean": 40660.0,
+"median": 38290.0
 },
 "31-1133": {
-"employment": 35520
+"employment": 35520,
+"mean": 45690.0,
+"median": 44910.0
 },
 "31-2011": {
-"employment": 51290
+"employment": 51290,
+"mean": 70710.0,
+"median": 72300.0
 },
 "31-2012": {
-"employment": 4310
+"employment": 4310,
+"mean": 44110.0,
+"median": 39160.0
 },
 "31-2021": {
-"employment": 112430
+"employment": 112430,
+"mean": 68730.0,
+"median": 68380.0
 },
 "31-2022": {
-"employment": 48150
+"employment": 48150,
+"mean": 36430.0,
+"median": 35240.0
 },
 "31-9011": {
-"employment": 98790
+"employment": 98790,
+"mean": 63830.0,
+"median": 58450.0
 },
 "31-9091": {
-"employment": 387790
+"employment": 387790,
+"mean": 50200.0,
+"median": 48070.0
 },
 "31-9092": {
-"employment": 817870
+"employment": 817870,
+"mean": 46120.0,
+"median": 45690.0
 },
 "31-9093": {
-"employment": 77420
+"employment": 77420,
+"mean": 50510.0,
+"median": 47700.0
 },
 "31-9094": {
-"employment": 41550
+"employment": 41550,
+"mean": 41710.0,
+"median": 40410.0
 },
 "31-9095": {
-"employment": 39530
+"employment": 39530,
+"mean": 40450.0,
+"median": 37680.0
 },
 "31-9096": {
-"employment": 126580
+"employment": 126580,
+"mean": 40340.0,
+"median": 38150.0
 },
 "31-9097": {
-"employment": 143540
+"employment": 143540,
+"mean": 45520.0,
+"median": 45230.0
 },
 "31-9099": {
-"employment": 109740
+"employment": 109740,
+"mean": 50810.0,
+"median": 48430.0
 },
 "33-1011": {
-"employment": 53380
+"employment": 53380,
+"mean": 84380.0,
+"median": 77970.0
 },
 "33-1012": {
-"employment": 154610
+"employment": 154610,
+"mean": 112190.0,
+"median": 106040.0
 },
 "33-1021": {
-"employment": 99140
+"employment": 99140,
+"mean": 96930.0,
+"median": 93530.0
 },
 "33-1091": {
-"employment": 81480
+"employment": 81480,
+"mean": 59900.0,
+"median": 55940.0
 },
 "33-1099": {
-"employment": 20690
+"employment": 20690,
+"mean": 74390.0,
+"median": 76400.0
 },
 "33-2011": {
-"employment": 345990
+"employment": 345990,
+"mean": 63630.0,
+"median": 59280.0
 },
 "33-2021": {
-"employment": 13800
+"employment": 13800,
+"mean": 78670.0,
+"median": 75920.0
 },
 "33-2022": {
-"employment": 2780
+"employment": 2780,
+"mean": 66640.0,
+"median": 56870.0
 },
 "33-3011": {
-"employment": 17310
+"employment": 17310,
+"mean": 61660.0,
+"median": 56600.0
 },
 "33-3012": {
-"employment": 380500
+"employment": 380500,
+"mean": 63630.0,
+"median": 58940.0
 },
 "33-3021": {
-"employment": 114430
+"employment": 114430,
+"mean": 99430.0,
+"median": 93790.0
 },
 "33-3031": {
-"employment": 5770
+"employment": 5770,
+"mean": 74950.0,
+"median": 74060.0
 },
 "33-3041": {
-"employment": 9050
+"employment": 9050,
+"mean": 51190.0,
+"median": 46730.0
 },
 "33-3051": {
-"employment": 670520
+"employment": 670520,
+"mean": 79200.0,
+"median": 76210.0
 },
 "33-3052": {
-"employment": 4390
+"employment": 4390,
+"mean": 91810.0,
+"median": 90230.0
 },
 "33-9011": {
-"employment": 12070
+"employment": 12070,
+"mean": 48440.0,
+"median": 45660.0
 },
 "33-9021": {
-"employment": 35580
+"employment": 35580,
+"mean": 60150.0,
+"median": 51220.0
 },
 "33-9031": {
-"employment": 9520
+"employment": 9520,
+"mean": 45630.0,
+"median": 43370.0
 },
 "33-9032": {
-"employment": 1283470
+"employment": 1283470,
+"mean": 42470.0,
+"median": 38020.0
 },
 "33-9091": {
-"employment": 94360
+"employment": 94360,
+"mean": 43350.0,
+"median": 38100.0
 },
 "33-9092": {
-"employment": 157550
+"employment": 157550,
+"mean": 34470.0,
+"median": 33580.0
 },
 "33-9093": {
-"employment": 50290
+"employment": 50290,
+"mean": 64310.0,
+"median": 66770.0
 },
 "33-9094": {
-"employment": 78420
+"employment": 78420,
+"mean": 35150.0,
+"median": 35100.0
 },
 "33-9099": {
-"employment": 81500
+"employment": 81500,
+"mean": 48070.0,
+"median": 42540.0
 },
 "35-1011": {
-"employment": 200040
+"employment": 200040,
+"mean": 66700.0,
+"median": 62470.0
 },
 "35-1012": {
-"employment": 1223240
+"employment": 1223240,
+"mean": 46180.0,
+"median": 44080.0
 },
 "35-2011": {
-"employment": 641070
+"employment": 641070,
+"mean": 32390.0,
+"median": 30890.0
 },
 "35-2012": {
-"employment": 441050
+"employment": 441050,
+"mean": 38810.0,
+"median": 37450.0
 },
 "35-2013": {
-"employment": 1100
+"employment": 1100,
+"mean": 53680.0,
+"median": 47940.0
 },
 "35-2014": {
-"employment": 1409890
+"employment": 1409890,
+"mean": 38730.0,
+"median": 37390.0
 },
 "35-2015": {
-"employment": 138650
+"employment": 138650,
+"mean": 36120.0,
+"median": 35880.0
 },
 "35-2019": {
-"employment": 19350
+"employment": 19350,
+"mean": 39150.0,
+"median": 37690.0
 },
 "35-2021": {
-"employment": 893600
+"employment": 893600,
+"mean": 35290.0,
+"median": 35320.0
 },
 "35-3011": {
-"employment": 756390
+"employment": 756390,
+"mean": 40790.0,
+"median": 34340.0
 },
 "35-3023": {
-"employment": 3854050
+"employment": 3854050,
+"mean": 32150.0,
+"median": 31200.0
 },
 "35-3031": {
-"employment": 2270910
+"employment": 2270910,
+"mean": 40060.0,
+"median": 35230.0
 },
 "35-3041": {
-"employment": 293900
+"employment": 293900,
+"mean": 36140.0,
+"median": 35360.0
 },
 "35-9011": {
-"employment": 542750
+"employment": 542750,
+"mean": 34230.0,
+"median": 33980.0
 },
 "35-9021": {
-"employment": 477450
+"employment": 477450,
+"mean": 34310.0,
+"median": 34810.0
 },
 "35-9031": {
-"employment": 432690
+"employment": 432690,
+"mean": 32690.0,
+"median": 31200.0
 },
 "35-9099": {
-"employment": 84630
+"employment": 84630,
+"mean": 36810.0,
+"median": 35840.0
 },
 "37-1011": {
-"employment": 178760
+"employment": 178760,
+"mean": 53320.0,
+"median": 49100.0
 },
 "37-1012": {
-"employment": 130760
+"employment": 130760,
+"mean": 60960.0,
+"median": 58430.0
 },
 "37-2011": {
-"employment": 2209760
+"employment": 2209760,
+"mean": 38760.0,
+"median": 36840.0
 },
 "37-2012": {
-"employment": 860670
+"employment": 860670,
+"mean": 37080.0,
+"median": 35510.0
 },
 "37-2019": {
-"employment": 17210
+"employment": 17210,
+"mean": 46420.0,
+"median": 44040.0
 },
 "37-2021": {
-"employment": 102620
+"employment": 102620,
+"mean": 46400.0,
+"median": 45250.0
 },
 "37-3011": {
-"employment": 952640
+"employment": 952640,
+"mean": 42290.0,
+"median": 39150.0
 },
 "37-3012": {
-"employment": 27050
+"employment": 27050,
+"mean": 47070.0,
+"median": 46340.0
 },
 "37-3013": {
-"employment": 55160
+"employment": 55160,
+"mean": 55970.0,
+"median": 50960.0
 },
 "37-3019": {
-"employment": 13630
+"employment": 13630,
+"mean": 48830.0,
+"median": 46860.0
 },
 "39-1013": {
-"employment": 26010
+"employment": 26010,
+"mean": 64830.0,
+"median": 63820.0
 },
 "39-1014": {
-"employment": 103190
+"employment": 103190,
+"mean": 53550.0,
+"median": 48560.0
 },
 "39-1022": {
-"employment": 114110
+"employment": 114110,
+"mean": 52360.0,
+"median": 48590.0
 },
 "39-2011": {
-"employment": 18770
+"employment": 18770,
+"mean": 47020.0,
+"median": 39990.0
 },
 "39-2021": {
-"employment": 266910
+"employment": 266910,
+"mean": 37300.0,
+"median": 35360.0
 },
 "39-3011": {
-"employment": 83910
+"employment": 83910,
+"mean": 42550.0,
+"median": 34320.0
 },
 "39-3012": {
-"employment": 8950
+"employment": 8950,
+"mean": 36450.0,
+"median": 34980.0
 },
 "39-3019": {
-"employment": 14140
+"employment": 14140,
+"mean": 41380.0,
+"median": 36310.0
 },
 "39-3021": {
-"employment": 1480
+"employment": 1480,
+"mean": 51480.0,
+"median": 38270.0
 },
 "39-3031": {
-"employment": 121770
+"employment": 121770,
+"mean": 33080.0,
+"median": 32910.0
 },
 "39-3091": {
-"employment": 397830
+"employment": 397830,
+"mean": 32640.0,
+"median": 32150.0
 },
 "39-3092": {
-"employment": 6510
+"employment": 6510,
+"mean": 63440.0,
+"median": 50400.0
 },
 "39-3093": {
-"employment": 15560
+"employment": 15560,
+"mean": 38460.0,
+"median": 36300.0
 },
 "39-3099": {
-"employment": 7060
+"employment": 7060,
+"mean": 34980.0,
+"median": 32640.0
 },
 "39-4011": {
-"employment": 3890
+"employment": 3890,
+"mean": 58390.0,
+"median": 58780.0
 },
 "39-4012": {
-"employment": 2970
+"employment": 2970,
+"mean": 45670.0,
+"median": 43650.0
 },
 "39-4021": {
-"employment": 31090
+"employment": 31090,
+"mean": 37190.0,
+"median": 35680.0
 },
 "39-4031": {
-"employment": 25100
+"employment": 25100,
+"mean": 58160.0,
+"median": 55010.0
 },
 "39-5011": {
-"employment": 15000
+"employment": 15000,
+"mean": 47070.0,
+"median": 38210.0
 },
 "39-5012": {
-"employment": 305710
+"employment": 305710,
+"mean": 43960.0,
+"median": 35790.0
 },
 "39-5091": {
-"employment": 2340
+"employment": 2340,
+"mean": 102240.0,
+"median": 97150.0
 },
 "39-5092": {
-"employment": 152770
+"employment": 152770,
+"mean": 38570.0,
+"median": 35760.0
 },
 "39-5093": {
-"employment": 8070
+"employment": 8070,
+"mean": 31980.0,
+"median": 32600.0
 },
 "39-5094": {
-"employment": 72890
+"employment": 72890,
+"mean": 51850.0,
+"median": 45330.0
 },
 "39-6011": {
-"employment": 28510
+"employment": 28510,
+"mean": 38570.0,
+"median": 37080.0
 },
 "39-6012": {
-"employment": 49240
+"employment": 49240,
+"mean": 42510.0,
+"median": 38950.0
 },
 "39-9011": {
-"employment": 518910
+"employment": 518910,
+"mean": 35030.0,
+"median": 34980.0
 },
 "39-9031": {
-"employment": 322930
+"employment": 322930,
+"mean": 52420.0,
+"median": 47160.0
 },
 "39-9032": {
-"employment": 331490
+"employment": 331490,
+"mean": 38520.0,
+"median": 36560.0
 },
 "39-9041": {
-"employment": 84760
+"employment": 84760,
+"mean": 43990.0,
+"median": 42240.0
 },
 "39-9099": {
-"employment": 60420
+"employment": 60420,
+"mean": 40120.0,
+"median": 41600.0
 },
 "41-1011": {
-"employment": 1121800
+"employment": 1121800,
+"mean": 53380.0,
+"median": 48520.0
 },
 "41-1012": {
-"employment": 214390
+"employment": 214390,
+"mean": 99370.0,
+"median": 87520.0
 },
 "41-2011": {
-"employment": 3089410
+"employment": 3089410,
+"mean": 33180.0,
+"median": 32880.0
 },
 "41-2012": {
-"employment": 21530
+"employment": 21530,
+"mean": 39100.0,
+"median": 36220.0
 },
 "41-2021": {
-"employment": 400810
+"employment": 400810,
+"mean": 45700.0,
+"median": 41300.0
 },
 "41-2022": {
-"employment": 270070
+"employment": 270070,
+"mean": 43830.0,
+"median": 38630.0
 },
 "41-2031": {
-"employment": 3897860
+"employment": 3897860,
+"mean": 37310.0,
+"median": 35410.0
 },
 "41-3011": {
-"employment": 91700
+"employment": 91700,
+"mean": 80670.0,
+"median": 64820.0
 },
 "41-3021": {
-"employment": 479100
+"employment": 479100,
+"mean": 81480.0,
+"median": 62280.0
 },
 "41-3031": {
-"employment": 489570
+"employment": 489570,
+"mean": 109150.0,
+"median": 78660.0
 },
 "41-3041": {
-"employment": 55110
+"employment": 55110,
+"mean": 54660.0,
+"median": 50160.0
 },
 "41-3091": {
-"employment": 1256010
+"employment": 1256010,
+"mean": 82430.0,
+"median": 69990.0
 },
 "41-4011": {
-"employment": 284800
+"employment": 284800,
+"mean": 119730.0,
+"median": 104920.0
 },
 "41-4012": {
-"employment": 1238190
+"employment": 1238190,
+"mean": 82530.0,
+"median": 72080.0
 },
 "41-9011": {
-"employment": 64520
+"employment": 64520,
+"mean": 45580.0,
+"median": 39320.0
 },
 "41-9012": {
-"employment": 3780
+"employment": 3780,
+"mean": 72800.0,
+"median": 48470.0
 },
 "41-9021": {
-"employment": 46100
+"employment": 46100,
+"mean": 83950.0,
+"median": 73220.0
 },
 "41-9022": {
-"employment": 193370
+"employment": 193370,
+"mean": 69510.0,
+"median": 52830.0
 },
 "41-9031": {
-"employment": 51790
+"employment": 51790,
+"mean": 130140.0,
+"median": 124900.0
 },
 "41-9041": {
-"employment": 58430
+"employment": 58430,
+"mean": 37370.0,
+"median": 35450.0
 },
 "41-9091": {
-"employment": 2760
+"employment": 2760,
+"mean": 43850.0,
+"median": 41380.0
 },
 "41-9099": {
-"employment": 93180
+"employment": 93180,
+"mean": 58510.0,
+"median": 48280.0
 },
 "43-1011": {
-"employment": 1436680
+"employment": 1436680,
+"mean": 73490.0,
+"median": 69500.0
 },
 "43-2011": {
-"employment": 34280
+"employment": 34280,
+"mean": 42300.0,
+"median": 38630.0
 },
 "43-2021": {
-"employment": 3430
+"employment": 3430,
+"mean": 44970.0,
+"median": 41740.0
 },
 "43-2099": {
-"employment": 1200
+"employment": 1200,
+"mean": 62130.0,
+"median": 54680.0
 },
 "43-3011": {
-"employment": 158830
+"employment": 158830,
+"mean": 49060.0,
+"median": 47030.0
 },
 "43-3021": {
-"employment": 404060
+"employment": 404060,
+"mean": 51070.0,
+"median": 48500.0
 },
 "43-3031": {
-"employment": 1373680
+"employment": 1373680,
+"mean": 53560.0,
+"median": 50670.0
 },
 "43-3041": {
-"employment": 14430
+"employment": 14430,
+"mean": 39510.0,
+"median": 37580.0
 },
 "43-3051": {
-"employment": 153140
+"employment": 153140,
+"mean": 59630.0,
+"median": 58260.0
 },
 "43-3061": {
-"employment": 55810
+"employment": 55810,
+"mean": 52370.0,
+"median": 50580.0
 },
 "43-3071": {
-"employment": 329480
+"employment": 329480,
+"mean": 42350.0,
+"median": 43030.0
 },
 "43-3099": {
-"employment": 36260
+"employment": 36260,
+"mean": 56450.0,
+"median": 53830.0
 },
 "43-4011": {
-"employment": 35940
+"employment": 35940,
+"mean": 72850.0,
+"median": 65750.0
 },
 "43-4021": {
-"employment": 4290
+"employment": 4290,
+"mean": 48090.0,
+"median": 46800.0
 },
 "43-4031": {
-"employment": 179750
+"employment": 179750,
+"mean": 52320.0,
+"median": 48700.0
 },
 "43-4041": {
-"employment": 12030
+"employment": 12030,
+"mean": 51420.0,
+"median": 50080.0
 },
 "43-4051": {
-"employment": 2595750
+"employment": 2595750,
+"mean": 46590.0,
+"median": 44770.0
 },
 "43-4061": {
-"employment": 154800
+"employment": 154800,
+"mean": 56090.0,
+"median": 54210.0
 },
 "43-4071": {
-"employment": 73440
+"employment": 73440,
+"mean": 45590.0,
+"median": 43600.0
 },
 "43-4081": {
-"employment": 261420
+"employment": 261420,
+"mean": 35550.0,
+"median": 35070.0
 },
 "43-4111": {
-"employment": 148060
+"employment": 148060,
+"mean": 47240.0,
+"median": 45920.0
 },
 "43-4121": {
-"employment": 85520
+"employment": 85520,
+"mean": 39370.0,
+"median": 36910.0
 },
 "43-4131": {
-"employment": 164790
+"employment": 164790,
+"mean": 52520.0,
+"median": 50020.0
 },
 "43-4141": {
-"employment": 36860
+"employment": 36860,
+"mean": 49370.0,
+"median": 47670.0
 },
 "43-4151": {
-"employment": 75200
+"employment": 75200,
+"mean": 48220.0,
+"median": 46170.0
 },
 "43-4161": {
-"employment": 90220
+"employment": 90220,
+"mean": 52250.0,
+"median": 50610.0
 },
 "43-4171": {
-"employment": 910180
+"employment": 910180,
+"mean": 39460.0,
+"median": 38010.0
 },
 "43-4181": {
-"employment": 118710
+"employment": 118710,
+"mean": 49630.0,
+"median": 44390.0
 },
 "43-4199": {
-"employment": 134920
+"employment": 134920,
+"mean": 51490.0,
+"median": 49500.0
 },
 "43-5011": {
-"employment": 97670
+"employment": 97670,
+"mean": 57230.0,
+"median": 52260.0
 },
 "43-5021": {
-"employment": 68640
+"employment": 68640,
+"mean": 40970.0,
+"median": 39200.0
 },
 "43-5031": {
-"employment": 102500
+"employment": 102500,
+"mean": 56740.0,
+"median": 53040.0
 },
 "43-5032": {
-"employment": 202810
+"employment": 202810,
+"mean": 54740.0,
+"median": 50340.0
 },
 "43-5041": {
-"employment": 19430
+"employment": 19430,
+"mean": 55380.0,
+"median": 48150.0
 },
 "43-5051": {
-"employment": 73720
+"employment": 73720,
+"mean": 61860.0,
+"median": 62130.0
 },
 "43-5052": {
-"employment": 328820
+"employment": 328820,
+"mean": 62540.0,
+"median": 60550.0
 },
 "43-5053": {
-"employment": 105200
+"employment": 105200,
+"mean": 59430.0,
+"median": 58470.0
 },
 "43-5061": {
-"employment": 390160
+"employment": 390160,
+"mean": 62150.0,
+"median": 59650.0
 },
 "43-5071": {
-"employment": 816870
+"employment": 816870,
+"mean": 46810.0,
+"median": 45260.0
 },
 "43-5111": {
-"employment": 53300
+"employment": 53300,
+"mean": 47630.0,
+"median": 46380.0
 },
 "43-6011": {
-"employment": 459910
+"employment": 459910,
+"mean": 79140.0,
+"median": 76590.0
 },
 "43-6012": {
-"employment": 156280
+"employment": 156280,
+"mean": 60620.0,
+"median": 55570.0
 },
 "43-6013": {
-"employment": 961610
+"employment": 961610,
+"mean": 46800.0,
+"median": 45930.0
 },
 "43-6014": {
-"employment": 1706790
+"employment": 1706790,
+"mean": 49350.0,
+"median": 47540.0
 },
 "43-9021": {
-"employment": 127080
+"employment": 127080,
+"mean": 43310.0,
+"median": 41340.0
 },
 "43-9022": {
-"employment": 35010
+"employment": 35010,
+"mean": 51120.0,
+"median": 49280.0
 },
 "43-9031": {
-"employment": 3350
+"employment": 3350,
+"mean": 61970.0,
+"median": 55290.0
 },
 "43-9041": {
-"employment": 214260
+"employment": 214260,
+"mean": 52920.0,
+"median": 49230.0
 },
 "43-9051": {
-"employment": 55230
+"employment": 55230,
+"mean": 41650.0,
+"median": 39280.0
 },
 "43-9061": {
-"employment": 2464940
+"employment": 2464940,
+"mean": 46420.0,
+"median": 45010.0
 },
 "43-9071": {
-"employment": 25130
+"employment": 25130,
+"mean": 43220.0,
+"median": 40960.0
 },
 "43-9081": {
-"employment": 4580
+"employment": 4580,
+"mean": 54800.0,
+"median": 51120.0
 },
 "43-9111": {
-"employment": 4710
+"employment": 4710,
+"mean": 55650.0,
+"median": 50330.0
 },
 "43-9199": {
-"employment": 192260
+"employment": 192260,
+"mean": 48670.0,
+"median": 45670.0
 },
 "45-1011": {
-"employment": 27960
+"employment": 27960,
+"mean": 62730.0,
+"median": 59320.0
 },
 "45-2011": {
-"employment": 14410
+"employment": 14410,
+"mean": 54910.0,
+"median": 49940.0
 },
 "45-2021": {
-"employment": 1330
+"employment": 1330,
+"mean": 57010.0,
+"median": 51130.0
 },
 "45-2041": {
-"employment": 25180
+"employment": 25180,
+"mean": 36430.0,
+"median": 35730.0
 },
 "45-2091": {
-"employment": 28500
+"employment": 28500,
+"mean": 43710.0,
+"median": 41730.0
 },
 "45-2092": {
-"employment": 265500
+"employment": 265500,
+"mean": 37630.0,
+"median": 35660.0
 },
 "45-2093": {
-"employment": 32810
+"employment": 32810,
+"mean": 39260.0,
+"median": 36670.0
 },
 "45-2099": {
-"employment": 3620
+"employment": 3620,
+"mean": 45510.0,
+"median": 39850.0
 },
 "45-4011": {
-"employment": 6050
+"employment": 6050,
+"mean": 43680.0,
+"median": 43680.0
 },
 "45-4021": {
-"employment": 3130
+"employment": 3130,
+"mean": 57110.0,
+"median": 52100.0
 },
 "45-4022": {
-"employment": 21060
+"employment": 21060,
+"mean": 53190.0,
+"median": 49740.0
 },
 "45-4023": {
-"employment": 3070
+"employment": 3070,
+"mean": 47770.0,
+"median": 46330.0
 },
 "45-4029": {
-"employment": 1700
+"employment": 1700,
+"mean": 52910.0,
+"median": 50840.0
 },
 "47-1011": {
-"employment": 812210
+"employment": 812210,
+"mean": 86450.0,
+"median": 79920.0
 },
 "47-2011": {
-"employment": 10190
+"employment": 10190,
+"mean": 80090.0,
+"median": 76410.0
 },
 "47-2021": {
-"employment": 52550
+"employment": 52550,
+"mean": 68280.0,
+"median": 62120.0
 },
 "47-2022": {
-"employment": 7820
+"employment": 7820,
+"mean": 60710.0,
+"median": 57390.0
 },
 "47-2031": {
-"employment": 670090
+"employment": 670090,
+"mean": 65630.0,
+"median": 60580.0
 },
 "47-2041": {
-"employment": 13780
+"employment": 13780,
+"mean": 56990.0,
+"median": 50340.0
 },
 "47-2042": {
-"employment": 23640
+"employment": 23640,
+"mean": 61760.0,
+"median": 56460.0
 },
 "47-2043": {
-"employment": 3720
+"employment": 3720,
+"mean": 52460.0,
+"median": 50440.0
 },
 "47-2044": {
-"employment": 35850
+"employment": 35850,
+"mean": 59250.0,
+"median": 55690.0
 },
 "47-2051": {
-"employment": 206170
+"employment": 206170,
+"mean": 60050.0,
+"median": 57020.0
 },
 "47-2053": {
-"employment": 1180
+"employment": 1180,
+"mean": 84920.0,
+"median": 76170.0
 },
 "47-2061": {
-"employment": 1096780
+"employment": 1096780,
+"mean": 52030.0,
+"median": 47120.0
 },
 "47-2071": {
-"employment": 41820
+"employment": 41820,
+"mean": 59000.0,
+"median": 53340.0
 },
 "47-2072": {
-"employment": 2310
+"employment": 2310,
+"mean": 80710.0,
+"median": 73300.0
 },
 "47-2073": {
-"employment": 478090
+"employment": 478090,
+"mean": 66290.0,
+"median": 59850.0
 },
 "47-2081": {
-"employment": 83080
+"employment": 83080,
+"mean": 63600.0,
+"median": 58930.0
 },
 "47-2082": {
-"employment": 12840
+"employment": 12840,
+"mean": 72710.0,
+"median": 68270.0
 },
 "47-2111": {
-"employment": 757220
+"employment": 757220,
+"mean": 71490.0,
+"median": 63190.0
 },
 "47-2121": {
-"employment": 58480
+"employment": 58480,
+"mean": 59720.0,
+"median": 57080.0
 },
 "47-2131": {
-"employment": 44440
+"employment": 44440,
+"mean": 54740.0,
+"median": 49120.0
 },
 "47-2132": {
-"employment": 25660
+"employment": 25660,
+"mean": 65530.0,
+"median": 58340.0
 },
 "47-2141": {
-"employment": 225190
+"employment": 225190,
+"mean": 55420.0,
+"median": 49400.0
 },
 "47-2142": {
-"employment": 1570
+"employment": 1570,
+"mean": 53730.0,
+"median": 52140.0
 },
 "47-2151": {
-"employment": 33050
+"employment": 33050,
+"mean": 54700.0,
+"median": 49000.0
 },
 "47-2152": {
-"employment": 465840
+"employment": 465840,
+"mean": 72170.0,
+"median": 63800.0
 },
 "47-2161": {
-"employment": 19310
+"employment": 19310,
+"mean": 62050.0,
+"median": 57660.0
 },
 "47-2171": {
-"employment": 13800
+"employment": 13800,
+"mean": 66060.0,
+"median": 58970.0
 },
 "47-2181": {
-"employment": 135490
+"employment": 135490,
+"mean": 58140.0,
+"median": 55440.0
 },
 "47-2211": {
-"employment": 119770
+"employment": 119770,
+"mean": 67850.0,
+"median": 61800.0
 },
 "47-2221": {
-"employment": 68380
+"employment": 68380,
+"mean": 70280.0,
+"median": 62780.0
 },
 "47-2231": {
-"employment": 31350
+"employment": 31350,
+"mean": 57900.0,
+"median": 53140.0
 },
 "47-3011": {
-"employment": 14170
+"employment": 14170,
+"mean": 50920.0,
+"median": 47550.0
 },
 "47-3012": {
-"employment": 21680
+"employment": 21680,
+"mean": 44050.0,
+"median": 43780.0
 },
 "47-3013": {
-"employment": 63630
+"employment": 63630,
+"mean": 44080.0,
+"median": 42670.0
 },
 "47-3014": {
-"employment": 7490
+"employment": 7490,
+"mean": 42440.0,
+"median": 40470.0
 },
 "47-3015": {
-"employment": 44330
+"employment": 44330,
+"mean": 43730.0,
+"median": 42360.0
 },
 "47-3016": {
-"employment": 6030
+"employment": 6030,
+"mean": 45150.0,
+"median": 44160.0
 },
 "47-3019": {
-"employment": 24770
+"employment": 24770,
+"mean": 45140.0,
+"median": 42670.0
 },
 "47-4011": {
-"employment": 146720
+"employment": 146720,
+"mean": 77730.0,
+"median": 74690.0
 },
 "47-4021": {
-"employment": 23790
+"employment": 23790,
+"mean": 109820.0,
+"median": 109910.0
 },
 "47-4031": {
-"employment": 24480
+"employment": 24480,
+"mean": 50530.0,
+"median": 47980.0
 },
 "47-4041": {
-"employment": 51710
+"employment": 51710,
+"mean": 56430.0,
+"median": 49450.0
 },
 "47-4051": {
-"employment": 154960
+"employment": 154960,
+"mean": 53080.0,
+"median": 50260.0
 },
 "47-4061": {
-"employment": 19580
+"employment": 19580,
+"mean": 68740.0,
+"median": 70070.0
 },
 "47-4071": {
-"employment": 30650
+"employment": 30650,
+"mean": 53500.0,
+"median": 49880.0
 },
 "47-5011": {
-"employment": 10590
+"employment": 10590,
+"mean": 60210.0,
+"median": 58620.0
 },
 "47-5012": {
-"employment": 12600
+"employment": 12600,
+"mean": 72130.0,
+"median": 67890.0
 },
 "47-5013": {
-"employment": 43140
+"employment": 43140,
+"mean": 62470.0,
+"median": 58160.0
 },
 "47-5022": {
-"employment": 34480
+"employment": 34480,
+"mean": 59930.0,
+"median": 57430.0
 },
 "47-5023": {
-"employment": 19450
+"employment": 19450,
+"mean": 62830.0,
+"median": 60190.0
 },
 "47-5032": {
-"employment": 5100
+"employment": 5100,
+"mean": 66640.0,
+"median": 61390.0
 },
 "47-5041": {
-"employment": 14000
+"employment": 14000,
+"mean": 65050.0,
+"median": 61810.0
 },
 "47-5043": {
-"employment": 2160
+"employment": 2160,
+"mean": 78100.0,
+"median": 78540.0
 },
 "47-5044": {
-"employment": 5930
+"employment": 5930,
+"mean": 71240.0,
+"median": 74500.0
 },
 "47-5049": {
-"employment": 3180
+"employment": 3180,
+"mean": 69860.0,
+"median": 70130.0
 },
 "47-5051": {
-"employment": 3320
+"employment": 3320,
+"mean": 51500.0,
+"median": 48740.0
 },
 "47-5071": {
-"employment": 44970
+"employment": 44970,
+"mean": 49200.0,
+"median": 46960.0
 },
 "47-5081": {
-"employment": 6700
+"employment": 6700,
+"mean": 50620.0,
+"median": 47730.0
 },
 "47-5099": {
-"employment": 5540
+"employment": 5540,
+"mean": 57890.0,
+"median": 57010.0
 },
 "49-1011": {
-"employment": 617500
+"employment": 617500,
+"mean": 85220.0,
+"median": 79860.0
 },
 "49-2011": {
-"employment": 65600
+"employment": 65600,
+"mean": 50880.0,
+"median": 47810.0
 },
 "49-2021": {
-"employment": 11140
+"employment": 11140,
+"mean": 69870.0,
+"median": 63520.0
 },
 "49-2022": {
-"employment": 140920
+"employment": 140920,
+"mean": 68500.0,
+"median": 63890.0
 },
 "49-2091": {
-"employment": 18830
+"employment": 18830,
+"mean": 83380.0,
+"median": 82280.0
 },
 "49-2092": {
-"employment": 14450
+"employment": 14450,
+"mean": 58610.0,
+"median": 56210.0
 },
 "49-2093": {
-"employment": 6940
+"employment": 6940,
+"mean": 83300.0,
+"median": 84890.0
 },
 "49-2094": {
-"employment": 65010
+"employment": 65010,
+"mean": 75570.0,
+"median": 74090.0
 },
 "49-2095": {
-"employment": 20720
+"employment": 20720,
+"mean": 100760.0,
+"median": 103020.0
 },
 "49-2096": {
-"employment": 8550
+"employment": 8550,
+"mean": 51560.0,
+"median": 48420.0
 },
 "49-2097": {
-"employment": 19780
+"employment": 19780,
+"mean": 57930.0,
+"median": 52600.0
 },
 "49-2098": {
-"employment": 86340
+"employment": 86340,
+"mean": 60960.0,
+"median": 60070.0
 },
 "49-3011": {
-"employment": 138090
+"employment": 138090,
+"mean": 84740.0,
+"median": 79870.0
 },
 "49-3021": {
-"employment": 149310
+"employment": 149310,
+"mean": 59690.0,
+"median": 54890.0
 },
 "49-3022": {
-"employment": 20310
+"employment": 20310,
+"mean": 50430.0,
+"median": 47630.0
 },
 "49-3023": {
-"employment": 704640
+"employment": 704640,
+"mean": 56420.0,
+"median": 50620.0
 },
 "49-3031": {
-"employment": 289960
+"employment": 289960,
+"mean": 64320.0,
+"median": 61770.0
 },
 "49-3041": {
-"employment": 37870
+"employment": 37870,
+"mean": 57290.0,
+"median": 56550.0
 },
 "49-3042": {
-"employment": 176600
+"employment": 176600,
+"mean": 69240.0,
+"median": 65510.0
 },
 "49-3043": {
-"employment": 21350
+"employment": 21350,
+"mean": 70680.0,
+"median": 67530.0
 },
 "49-3051": {
-"employment": 23220
+"employment": 23220,
+"mean": 58070.0,
+"median": 57550.0
 },
 "49-3052": {
-"employment": 13510
+"employment": 13510,
+"mean": 52370.0,
+"median": 48580.0
 },
 "49-3053": {
-"employment": 36060
+"employment": 36060,
+"mean": 49990.0,
+"median": 47880.0
 },
 "49-3091": {
-"employment": 12170
+"employment": 12170,
+"mean": 42730.0,
+"median": 42780.0
 },
 "49-3092": {
-"employment": 17430
+"employment": 17430,
+"mean": 56440.0,
+"median": 52000.0
 },
 "49-3093": {
-"employment": 108410
+"employment": 108410,
+"mean": 40170.0,
+"median": 37710.0
 },
 "49-9011": {
-"employment": 27120
+"employment": 27120,
+"mean": 57540.0,
+"median": 55720.0
 },
 "49-9012": {
-"employment": 48240
+"employment": 48240,
+"mean": 76210.0,
+"median": 74340.0
 },
 "49-9021": {
-"employment": 409670
+"employment": 409670,
+"mean": 64780.0,
+"median": 61010.0
 },
 "49-9031": {
-"employment": 32150
+"employment": 32150,
+"mean": 56040.0,
+"median": 50990.0
 },
 "49-9041": {
-"employment": 439640
+"employment": 439640,
+"mean": 68460.0,
+"median": 64520.0
 },
 "49-9043": {
-"employment": 60020
+"employment": 60020,
+"mean": 64610.0,
+"median": 60850.0
 },
 "49-9044": {
-"employment": 40330
+"employment": 40330,
+"mean": 69780.0,
+"median": 65700.0
 },
 "49-9045": {
-"employment": 1080
+"employment": 1080,
+"mean": 63770.0,
+"median": 61290.0
 },
 "49-9051": {
-"employment": 131070
+"employment": 131070,
+"mean": 91970.0,
+"median": 95320.0
 },
 "49-9052": {
-"employment": 97720
+"employment": 97720,
+"mean": 73940.0,
+"median": 74330.0
 },
 "49-9061": {
-"employment": 1650
+"employment": 1650,
+"mean": 56040.0,
+"median": 52720.0
 },
 "49-9062": {
-"employment": 65990
+"employment": 65990,
+"mean": 65930.0,
+"median": 61660.0
 },
 "49-9063": {
-"employment": 5380
+"employment": 5380,
+"mean": 49960.0,
+"median": 46420.0
 },
 "49-9064": {
-"employment": 1310
+"employment": 1310,
+"mean": 70840.0,
+"median": 67230.0
 },
 "49-9069": {
-"employment": 9400
+"employment": 9400,
+"mean": 71180.0,
+"median": 68990.0
 },
 "49-9071": {
-"employment": 1529700
+"employment": 1529700,
+"mean": 53780.0,
+"median": 49590.0
 },
 "49-9081": {
-"employment": 9980
+"employment": 9980,
+"mean": 68980.0,
+"median": 64120.0
 },
 "49-9091": {
-"employment": 26410
+"employment": 26410,
+"mean": 49770.0,
+"median": 47450.0
 },
 "49-9092": {
-"employment": 3450
+"employment": 3450,
+"mean": 88320.0,
+"median": 72990.0
 },
 "49-9094": {
-"employment": 15040
+"employment": 15040,
+"mean": 55470.0,
+"median": 51320.0
 },
 "49-9095": {
-"employment": 3020
+"employment": 3020,
+"mean": 45410.0,
+"median": 45990.0
 },
 "49-9096": {
-"employment": 22530
+"employment": 22530,
+"mean": 66810.0,
+"median": 62640.0
 },
 "49-9097": {
-"employment": 8720
+"employment": 8720,
+"mean": 90410.0,
+"median": 92460.0
 },
 "49-9098": {
-"employment": 95580
+"employment": 95580,
+"mean": 41490.0,
+"median": 39630.0
 },
 "49-9099": {
-"employment": 176300
+"employment": 176300,
+"mean": 53850.0,
+"median": 49230.0
 },
 "51-1011": {
-"employment": 673430
+"employment": 673430,
+"mean": 76600.0,
+"median": 74450.0
 },
 "51-2011": {
-"employment": 34020
+"employment": 34020,
+"mean": 71420.0,
+"median": 65380.0
 },
 "51-2021": {
-"employment": 12840
+"employment": 12840,
+"mean": 50470.0,
+"median": 48220.0
 },
 "51-2031": {
-"employment": 34000
+"employment": 34000,
+"mean": 57790.0,
+"median": 53710.0
 },
 "51-2041": {
-"employment": 52360
+"employment": 52360,
+"mean": 54030.0,
+"median": 51330.0
 },
 "51-2051": {
-"employment": 16170
+"employment": 16170,
+"mean": 49550.0,
+"median": 46880.0
 },
 "51-2061": {
-"employment": 250
+"employment": 250,
+"mean": 56720.0,
+"median": 62620.0
 },
 "51-3011": {
-"employment": 236200
+"employment": 236200,
+"mean": 38480.0,
+"median": 37160.0
 },
 "51-3021": {
-"employment": 136430
+"employment": 136430,
+"mean": 42380.0,
+"median": 40140.0
 },
 "51-3022": {
-"employment": 145700
+"employment": 145700,
+"mean": 39280.0,
+"median": 38300.0
 },
 "51-3023": {
-"employment": 69950
+"employment": 69950,
+"mean": 41770.0,
+"median": 40130.0
 },
 "51-3091": {
-"employment": 20370
+"employment": 20370,
+"mean": 45930.0,
+"median": 44810.0
 },
 "51-3092": {
-"employment": 174520
+"employment": 174520,
+"mean": 43750.0,
+"median": 42290.0
 },
 "51-3093": {
-"employment": 31250
+"employment": 31250,
+"mean": 42570.0,
+"median": 41590.0
 },
 "51-3099": {
-"employment": 65000
+"employment": 65000,
+"mean": 40300.0,
+"median": 39680.0
 },
 "51-4021": {
-"employment": 60840
+"employment": 60840,
+"mean": 49480.0,
+"median": 47720.0
 },
 "51-4022": {
-"employment": 8930
+"employment": 8930,
+"mean": 51680.0,
+"median": 49030.0
 },
 "51-4023": {
-"employment": 25250
+"employment": 25250,
+"mean": 53220.0,
+"median": 50140.0
 },
 "51-4031": {
-"employment": 171200
+"employment": 171200,
+"mean": 48430.0,
+"median": 46330.0
 },
 "51-4032": {
-"employment": 4680
+"employment": 4680,
+"mean": 51810.0,
+"median": 49080.0
 },
 "51-4033": {
-"employment": 67000
+"employment": 67000,
+"mean": 48170.0,
+"median": 46550.0
 },
 "51-4034": {
-"employment": 16710
+"employment": 16710,
+"mean": 52490.0,
+"median": 50620.0
 },
 "51-4035": {
-"employment": 12460
+"employment": 12460,
+"mean": 56740.0,
+"median": 52800.0
 },
 "51-4041": {
-"employment": 287050
+"employment": 287050,
+"mean": 59320.0,
+"median": 58750.0
 },
 "51-4051": {
-"employment": 16780
+"employment": 16780,
+"mean": 55490.0,
+"median": 54430.0
 },
 "51-4052": {
-"employment": 4560
+"employment": 4560,
+"mean": 54290.0,
+"median": 51810.0
 },
 "51-4061": {
-"employment": 2610
+"employment": 2610,
+"mean": 68570.0,
+"median": 63340.0
 },
 "51-4062": {
-"employment": 1470
+"employment": 1470,
+"mean": 60610.0,
+"median": 58000.0
 },
 "51-4071": {
-"employment": 12790
+"employment": 12790,
+"mean": 49860.0,
+"median": 48110.0
 },
 "51-4072": {
-"employment": 150470
+"employment": 150470,
+"mean": 45960.0,
+"median": 44350.0
 },
 "51-4081": {
-"employment": 124590
+"employment": 124590,
+"mean": 50030.0,
+"median": 47180.0
 },
 "51-4111": {
-"employment": 56930
+"employment": 56930,
+"mean": 66860.0,
+"median": 64050.0
 },
 "51-4121": {
-"employment": 416210
+"employment": 416210,
+"mean": 56760.0,
+"median": 53750.0
 },
 "51-4122": {
-"employment": 31600
+"employment": 31600,
+"mean": 50220.0,
+"median": 47920.0
 },
 "51-4191": {
-"employment": 14000
+"employment": 14000,
+"mean": 50450.0,
+"median": 48750.0
 },
 "51-4192": {
-"employment": 5970
+"employment": 5970,
+"mean": 66520.0,
+"median": 63870.0
 },
 "51-4193": {
-"employment": 32410
+"employment": 32410,
+"mean": 45100.0,
+"median": 43960.0
 },
 "51-4194": {
-"employment": 5600
+"employment": 5600,
+"mean": 53240.0,
+"median": 50060.0
 },
 "51-4199": {
-"employment": 15900
+"employment": 15900,
+"mean": 48580.0,
+"median": 45950.0
 },
 "51-5111": {
-"employment": 23840
+"employment": 23840,
+"mean": 50800.0,
+"median": 48690.0
 },
 "51-5112": {
-"employment": 144260
+"employment": 144260,
+"mean": 47360.0,
+"median": 45780.0
 },
 "51-5113": {
-"employment": 33180
+"employment": 33180,
+"mean": 44460.0,
+"median": 42290.0
 },
 "51-6011": {
-"employment": 198040
+"employment": 198040,
+"mean": 34920.0,
+"median": 34890.0
 },
 "51-6021": {
-"employment": 26120
+"employment": 26120,
+"mean": 34640.0,
+"median": 35060.0
 },
 "51-6031": {
-"employment": 104880
+"employment": 104880,
+"mean": 37600.0,
+"median": 36670.0
 },
 "51-6041": {
-"employment": 7450
+"employment": 7450,
+"mean": 39160.0,
+"median": 37800.0
 },
 "51-6042": {
-"employment": 3280
+"employment": 3280,
+"mean": 36280.0,
+"median": 35650.0
 },
 "51-6051": {
-"employment": 2190
+"employment": 2190,
+"mean": 37210.0,
+"median": 36480.0
 },
 "51-6052": {
-"employment": 13920
+"employment": 13920,
+"mean": 45140.0,
+"median": 41640.0
 },
 "51-6061": {
-"employment": 5310
+"employment": 5310,
+"mean": 40380.0,
+"median": 38180.0
 },
 "51-6062": {
-"employment": 9000
+"employment": 9000,
+"mean": 39530.0,
+"median": 38760.0
 },
 "51-6063": {
-"employment": 13030
+"employment": 13030,
+"mean": 40720.0,
+"median": 39530.0
 },
 "51-6064": {
-"employment": 22020
+"employment": 22020,
+"mean": 40120.0,
+"median": 38670.0
 },
 "51-6091": {
-"employment": 12850
+"employment": 12850,
+"mean": 48580.0,
+"median": 46350.0
 },
 "51-6092": {
-"employment": 2950
+"employment": 2950,
+"mean": 71420.0,
+"median": 62750.0
 },
 "51-6093": {
-"employment": 20140
+"employment": 20140,
+"mean": 47340.0,
+"median": 46340.0
 },
 "51-6099": {
-"employment": 13530
+"employment": 13530,
+"mean": 40560.0,
+"median": 37280.0
 },
 "51-7011": {
-"employment": 77170
+"employment": 77170,
+"mean": 48290.0,
+"median": 46680.0
 },
 "51-7021": {
-"employment": 14480
+"employment": 14480,
+"mean": 45300.0,
+"median": 44540.0
 },
 "51-7031": {
-"employment": 280
+"employment": 280,
+"mean": 63670.0,
+"median": 56550.0
 },
 "51-7032": {
-"employment": 220
+"employment": 220,
+"mean": 54240.0,
+"median": 49630.0
 },
 "51-7041": {
-"employment": 40850
+"employment": 40850,
+"mean": 43580.0,
+"median": 42770.0
 },
 "51-7042": {
-"employment": 61420
+"employment": 61420,
+"mean": 43570.0,
+"median": 43380.0
 },
 "51-7099": {
-"employment": 5490
+"employment": 5490,
+"mean": 46070.0,
+"median": 44530.0
 },
 "51-8011": {
-"employment": 5150
+"employment": 5150,
+"mean": 121380.0,
+"median": 122890.0
 },
 "51-8012": {
-"employment": 8520
+"employment": 8520,
+"mean": 111320.0,
+"median": 106730.0
 },
 "51-8013": {
-"employment": 29320
+"employment": 29320,
+"mean": 99790.0,
+"median": 102040.0
 },
 "51-8021": {
-"employment": 28250
+"employment": 28250,
+"mean": 83960.0,
+"median": 78620.0
 },
 "51-8031": {
-"employment": 128490
+"employment": 128490,
+"mean": 62540.0,
+"median": 60020.0
 },
 "51-8091": {
-"employment": 16610
+"employment": 16610,
+"mean": 79970.0,
+"median": 78120.0
 },
 "51-8092": {
-"employment": 18030
+"employment": 18030,
+"mean": 88710.0,
+"median": 87820.0
 },
 "51-8093": {
-"employment": 33160
+"employment": 33160,
+"mean": 90630.0,
+"median": 96710.0
 },
 "51-8099": {
-"employment": 14080
+"employment": 14080,
+"mean": 65700.0,
+"median": 62470.0
 },
 "51-9011": {
-"employment": 139630
+"employment": 139630,
+"mean": 60710.0,
+"median": 58040.0
 },
 "51-9012": {
-"employment": 60100
+"employment": 60100,
+"mean": 56030.0,
+"median": 51610.0
 },
 "51-9021": {
-"employment": 26000
+"employment": 26000,
+"mean": 51380.0,
+"median": 48540.0
 },
 "51-9022": {
-"employment": 10510
+"employment": 10510,
+"mean": 45020.0,
+"median": 42660.0
 },
 "51-9023": {
-"employment": 94920
+"employment": 94920,
+"mean": 52090.0,
+"median": 48990.0
 },
 "51-9031": {
-"employment": 6060
+"employment": 6060,
+"mean": 41050.0,
+"median": 38020.0
 },
 "51-9032": {
-"employment": 44980
+"employment": 44980,
+"mean": 47460.0,
+"median": 46570.0
 },
 "51-9041": {
-"employment": 58770
+"employment": 58770,
+"mean": 47260.0,
+"median": 45760.0
 },
 "51-9051": {
-"employment": 14280
+"employment": 14280,
+"mean": 50940.0,
+"median": 48040.0
 },
 "51-9061": {
-"employment": 597370
+"employment": 597370,
+"mean": 53450.0,
+"median": 48570.0
 },
 "51-9071": {
-"employment": 22440
+"employment": 22440,
+"mean": 57960.0,
+"median": 52540.0
 },
 "51-9081": {
-"employment": 34410
+"employment": 34410,
+"mean": 54290.0,
+"median": 49610.0
 },
 "51-9082": {
-"employment": 11280
+"employment": 11280,
+"mean": 52730.0,
+"median": 48030.0
 },
 "51-9083": {
-"employment": 18660
+"employment": 18660,
+"mean": 43190.0,
+"median": 39460.0
 },
 "51-9111": {
-"employment": 379060
+"employment": 379060,
+"mean": 44590.0,
+"median": 43220.0
 },
 "51-9123": {
-"employment": 7940
+"employment": 7940,
+"mean": 45210.0,
+"median": 41600.0
 },
 "51-9124": {
-"employment": 158740
+"employment": 158740,
+"mean": 52620.0,
+"median": 48250.0
 },
 "51-9141": {
-"employment": 31460
+"employment": 31460,
+"mean": 60180.0,
+"median": 51430.0
 },
 "51-9151": {
-"employment": 4800
+"employment": 4800,
+"mean": 46050.0,
+"median": 40610.0
 },
 "51-9161": {
-"employment": 169450
+"employment": 169450,
+"mean": 54320.0,
+"median": 50690.0
 },
 "51-9162": {
-"employment": 28500
+"employment": 28500,
+"mean": 72210.0,
+"median": 68120.0
 },
 "51-9191": {
-"employment": 11500
+"employment": 11500,
+"mean": 46850.0,
+"median": 46460.0
 },
 "51-9192": {
-"employment": 14760
+"employment": 14760,
+"mean": 44600.0,
+"median": 43530.0
 },
 "51-9193": {
-"employment": 6900
+"employment": 6900,
+"mean": 44940.0,
+"median": 41330.0
 },
 "51-9194": {
-"employment": 7750
+"employment": 7750,
+"mean": 46320.0,
+"median": 43310.0
 },
 "51-9195": {
-"employment": 33190
+"employment": 33190,
+"mean": 47500.0,
+"median": 46170.0
 },
 "51-9196": {
-"employment": 96130
+"employment": 96130,
+"mean": 52840.0,
+"median": 50270.0
 },
 "51-9197": {
-"employment": 20770
+"employment": 20770,
+"mean": 57160.0,
+"median": 57390.0
 },
 "51-9198": {
-"employment": 165700
+"employment": 165700,
+"mean": 41120.0,
+"median": 39070.0
 },
 "51-9199": {
-"employment": 251700
+"employment": 251700,
+"mean": 44380.0,
+"median": 40110.0
 },
 "53-1041": {
-"employment": 9760
+"employment": 9760,
+"mean": 65010.0,
+"median": 58170.0
 },
 "53-2011": {
-"employment": 103560
+"employment": 103560,
+"mean": 288650.0,
+"median": 232140.0
 },
 "53-2012": {
-"employment": 47630
+"employment": 47630,
+"mean": 146080.0,
+"median": 123220.0
 },
 "53-2021": {
-"employment": 22510
+"employment": 22510,
+"mean": 146490.0,
+"median": 148080.0
 },
 "53-2022": {
-"employment": 15190
+"employment": 15190,
+"mean": 63610.0,
+"median": 56850.0
 },
 "53-2031": {
-"employment": 131650
+"employment": 131650,
+"mean": 77440.0,
+"median": 63580.0
 },
 "53-3011": {
-"employment": 12630
+"employment": 12630,
+"mean": 36210.0,
+"median": 35450.0
 },
 "53-3031": {
-"employment": 409180
+"employment": 409180,
+"mean": 40730.0,
+"median": 38770.0
 },
 "53-3032": {
-"employment": 2062040
+"employment": 2062040,
+"mean": 59710.0,
+"median": 58640.0
 },
 "53-3033": {
-"employment": 983300
+"employment": 983300,
+"mean": 48770.0,
+"median": 44860.0
 },
 "53-3051": {
-"employment": 402930
+"employment": 402930,
+"mean": 48430.0,
+"median": 47920.0
 },
 "53-3052": {
-"employment": 159240
+"employment": 159240,
+"mean": 60280.0,
+"median": 59050.0
 },
 "53-3053": {
-"employment": 248530
+"employment": 248530,
+"mean": 39880.0,
+"median": 37290.0
 },
 "53-3054": {
-"employment": 41050
+"employment": 41050,
+"mean": 49930.0,
+"median": 42100.0
 },
 "53-3099": {
-"employment": 46880
+"employment": 46880,
+"mean": 42430.0,
+"median": 37180.0
 },
 "53-4011": {
-"employment": 33470
+"employment": 33470,
+"mean": 85900.0,
+"median": 81410.0
 },
 "53-4013": {
-"employment": 3920
+"employment": 3920,
+"mean": 68450.0,
+"median": 60600.0
 },
 "53-4022": {
-"employment": 12400
+"employment": 12400,
+"mean": 69030.0,
+"median": 68840.0
 },
 "53-4031": {
-"employment": 46440
+"employment": 46440,
+"mean": 79100.0,
+"median": 78000.0
 },
 "53-4041": {
-"employment": 10200
+"employment": 10200,
+"mean": 77170.0,
+"median": 86380.0
 },
 "53-4099": {
-"employment": 1120
+"employment": 1120,
+"mean": 60140.0,
+"median": 56360.0
 },
 "53-5011": {
-"employment": 31670
+"employment": 31670,
+"mean": 56830.0,
+"median": 51520.0
 },
 "53-5021": {
-"employment": 36850
+"employment": 36850,
+"mean": 103720.0,
+"median": 92460.0
 },
 "53-5022": {
-"employment": 2480
+"employment": 2480,
+"mean": 56270.0,
+"median": 47520.0
 },
 "53-5031": {
-"employment": 8400
+"employment": 8400,
+"mean": 111790.0,
+"median": 109530.0
 },
 "53-6011": {
-"employment": 3040
+"employment": 3040,
+"mean": 55370.0,
+"median": 57700.0
 },
 "53-6021": {
-"employment": 137880
+"employment": 137880,
+"mean": 34990.0,
+"median": 35150.0
 },
 "53-6031": {
-"employment": 102010
+"employment": 102010,
+"mean": 36780.0,
+"median": 35670.0
 },
 "53-6032": {
-"employment": 31300
+"employment": 31300,
+"mean": 43330.0,
+"median": 40450.0
 },
 "53-6041": {
-"employment": 7860
+"employment": 7860,
+"mean": 62050.0,
+"median": 59090.0
 },
 "53-6051": {
-"employment": 24500
+"employment": 24500,
+"mean": 88540.0,
+"median": 92100.0
 },
 "53-6061": {
-"employment": 27110
+"employment": 27110,
+"mean": 37820.0,
+"median": 37720.0
 },
 "53-6099": {
-"employment": 13550
+"employment": 13550,
+"mean": 50890.0,
+"median": 45650.0
 },
 "53-7011": {
-"employment": 22930
+"employment": 22930,
+"mean": 45080.0,
+"median": 42420.0
 },
 "53-7021": {
-"employment": 42890
+"employment": 42890,
+"mean": 72130.0,
+"median": 68080.0
 },
 "53-7031": {
-"employment": 1040
+"employment": 1040,
+"mean": 56120.0,
+"median": 49640.0
 },
 "53-7041": {
-"employment": 2600
+"employment": 2600,
+"mean": 67710.0,
+"median": 56450.0
 },
 "53-7051": {
-"employment": 774420
+"employment": 774420,
+"mean": 48370.0,
+"median": 46420.0
 },
 "53-7061": {
-"employment": 380430
+"employment": 380430,
+"mean": 36980.0,
+"median": 35830.0
 },
 "53-7062": {
-"employment": 2950280
+"employment": 2950280,
+"mean": 42260.0,
+"median": 40240.0
 },
 "53-7063": {
-"employment": 42330
+"employment": 42330,
+"mean": 43660.0,
+"median": 41220.0
 },
 "53-7064": {
-"employment": 559820
+"employment": 559820,
+"mean": 37540.0,
+"median": 36280.0
 },
 "53-7065": {
-"employment": 2833810
+"employment": 2833810,
+"mean": 39540.0,
+"median": 37330.0
 },
 "53-7071": {
-"employment": 3510
+"employment": 3510,
+"mean": 74610.0,
+"median": 77320.0
 },
 "53-7072": {
-"employment": 9780
+"employment": 9780,
+"mean": 63960.0,
+"median": 61770.0
 },
 "53-7073": {
-"employment": 17990
+"employment": 17990,
+"mean": 70370.0,
+"median": 69960.0
 },
 "53-7081": {
-"employment": 147240
+"employment": 147240,
+"mean": 52820.0,
+"median": 49690.0
 },
 "53-7121": {
-"employment": 10700
+"employment": 10700,
+"mean": 59970.0,
+"median": 58870.0
 },
 "53-7199": {
-"employment": 23480
+"employment": 23480,
+"mean": 45640.0,
+"median": 41800.0
 }
 },
 "year": "2025"
