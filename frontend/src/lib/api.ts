@@ -588,6 +588,10 @@ export interface JobSearchResponse {
   excluded_too_old?: number
   /** How each typed location was understood; unknown/invalid ones weren't searched. */
   place_checks?: PlaceCheck[]
+  /** Understood but not searched: a search covers MAX_JOB_LOCATIONS places. */
+  places_not_searched?: string[]
+  /** "Remote" was typed as a place, so the Remote only filter was applied. */
+  remote_from_place?: boolean
   /** Other spellings also searched, learned from O*NET ("RN" for "registered nurse"). */
   also_searched?: string[]
 }
@@ -597,9 +601,13 @@ export const MAX_JOB_LOCATIONS = 3
 
 export interface PlaceCheck {
   input: string
-  status: 'ok' | 'ambiguous' | 'state' | 'unknown' | 'invalid'
+  status: 'ok' | 'ambiguous' | 'state' | 'region' | 'remote' | 'unknown' | 'invalid'
   /** What was searched, e.g. "Austin, TX". */
   place?: string | null
+  /** Everything searched for it: one place, or a region's cities. */
+  places?: string[]
+  /** Why what's searched differs from what was typed, e.g. "ZIP 78701 is in Austin, TX". */
+  note?: string | null
   /** Other places with the same name, largest first. */
   alternatives: string[]
   /** For an unknown place: did you mean. */

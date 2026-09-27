@@ -83,21 +83,23 @@ const ageLabel = (r: RecentSearch) =>
   r.posted === 'custom' ? (r.since ? `since ${r.since}` : '')
     : AGE_CHOICES.find((c) => c.value === (r.posted ?? '7'))?.label ?? ''
 
-/** Two letters at least: "3" or "." can't name a place (the board read "."
- *  as Alabama). */
-const hasLetters = (text: string) => (text.match(/[A-Za-z]/g) ?? []).length >= 2
+/** Two letters at least, or a ZIP code: "3" or "." can't name a place (the
+ *  board read "." as Alabama). */
+const mightBePlace = (text: string) =>
+  (text.match(/[A-Za-z]/g) ?? []).length >= 2 || /^\d{5}(-\d{4})?$/.test(text.trim())
 
 /**
  * How the typed places were understood, with one-click fixes. Unknown and
  * invalid ones were not searched; a shared name shows which place was used.
  */
-function PlaceNotes({ checks, onUse }: {
+function PlaceNotes({ checks, notSearched, onUse }: {
   checks: PlaceCheck[]
+  notSearched: string[]
   onUse: (from: string | null, to: string) => void
 }) {
-  const notes = checks.filter((c) => c.status === 'unknown' || c.status === 'invalid' ||
+  const notes = checks.filter((c) => c.status === 'unknown' || c.status === 'invalid' || c.note ||
     (c.status === 'ambiguous' && c.alternatives.length > 0))
-  if (!notes.length) return null
+  if (!notes.length && !notSearched.length) return null
   const chip = 'px-2.5 py-0.5 rounded-full border border-amber-300 bg-white text-amber-900 hover:border-amber-500'
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 space-y-2 text-sm text-amber-900"
@@ -105,11 +107,16 @@ function PlaceNotes({ checks, onUse }: {
       {notes.map((c) => (
         <p key={c.input} className="flex flex-wrap items-center gap-1.5">
           <MapPin className="w-4 h-4 shrink-0" />
-          {c.status === 'invalid' && <>"{c.input}" isn't a place, so it wasn't searched.</>}
-          {c.status === 'unknown' && (c.suggestions.length
-            ? <>We couldn't find "{c.input}", so it wasn't searched. Did you mean:</>
-            : <>We couldn't find "{c.input}", so it wasn't searched. Try a city or state, like "Austin, TX".</>)}
-          {c.status === 'ambiguous' && <>"{c.input}": showing {c.place}. Or:</>}
+          {c.status === 'invalid' && <>"{c.input}" isn't a place, so it wasn't searched.{c.note && <> {c.note}</>}</>}
+          {c.status === 'unknown' && (c.note
+            ? <>We couldn't search "{c.input}". {c.note}{c.suggestions.length > 0 && ' Did you mean:'}</>
+            : c.suggestions.length
+              ? <>We couldn't find "{c.input}", so it wasn't searched. Did you mean:</>
+              : <>We couldn't find "{c.input}", so it wasn't searched. Try a city or state, like "Austin, TX".</>)}
+          {(c.status === 'ok' || c.status === 'region' || c.status === 'remote' || c.status === 'state') && c.note}
+          {c.status === 'ambiguous' && (c.note
+            ? <>{c.note}{c.alternatives.length > 0 && ' Or:'}</>
+            : <>"{c.input}": showing {c.place}. Or:</>)}
           {(c.status === 'unknown' ? c.suggestions : c.status === 'ambiguous' ? c.alternatives : []).map((to) => (
             <button key={to} type="button" className={chip}
               onClick={() => onUse(c.status === 'ambiguous' ? c.place ?? null : null, to)}>
@@ -118,6 +125,13 @@ function PlaceNotes({ checks, onUse }: {
           ))}
         </p>
       ))}
+      {notSearched.length > 0 && (
+        <p className="flex flex-wrap items-center gap-1.5">
+          <MapPin className="w-4 h-4 shrink-0" />
+          A search covers {MAX_JOB_LOCATIONS} places at a time, so {notSearched.join(', ')}{' '}
+          {notSearched.length === 1 ? "wasn't" : "weren't"} searched.
+        </p>
+      )}
     </div>
   )
 }
@@ -217,7 +231,7 @@ export default function JobSearch() {
   const addPlace = (text: string = placeDraft) => {
     const place = text.trim()
     if (!place) return
-    if (!hasLetters(place)) {
+    if (!mightBePlace(place)) {
       setPlaceError(`"${place}" isn't a place. Enter a city or state, like "Austin, TX".`)
       return
     }
@@ -230,7 +244,7 @@ export default function JobSearch() {
   // Suggestions from real places as you type ("sea" -> Seattle, WA).
   useEffect(() => {
     const text = placeDraft.trim()
-    if (text.length < 2 || !hasLetters(text)) {
+    if (text.length < 2 || !mightBePlace(text)) {
       setPlaceOptions([])
       return
     }
@@ -282,8 +296,11 @@ export default function JobSearch() {
       // Tags become what was actually searched ("new york" -> "New York, NY");
       // unknown and junk ones drop out, and PlaceNotes says why.
       if (found.place_checks?.length) {
-        setPlaces(found.place_checks.filter((c) => c.place).map((c) => c.place!))
+        setPlaces([...new Set(found.place_checks.flatMap((c) => c.places ?? (c.place ? [c.place] : [])))]
+          .slice(0, MAX_JOB_LOCATIONS))
       }
+      // "Remote" typed as a place: the filter was applied, so show it ticked.
+      if (found.remote_from_place) setRemoteOnly(true)
       setRecent(saveRecent('jobs', user?.id,
         { q: query, places: where, jobType: type, posted: when.posted, since: when.since, sort: when.sort },
         recentKey))
@@ -299,7 +316,7 @@ export default function JobSearch() {
     if (!q.trim() || loading) return
     // Text still in the box counts, so nobody has to press Enter first --
     // unless it can't be a place.
-    if (placeDraft.trim() && !hasLetters(placeDraft)) {
+    if (placeDraft.trim() && !mightBePlace(placeDraft)) {
       setPlaceError(`"${placeDraft.trim()}" isn't a place. Enter a city or state, like "Austin, TX".`)
       return
     }
@@ -466,7 +483,7 @@ export default function JobSearch() {
             <label htmlFor="where" className="block text-sm font-medium text-slate-700 mb-1">
               Locations{' '}
               <span className="text-slate-400 font-normal">
-                (optional, up to {MAX_JOB_LOCATIONS})
+                (optional, US only, up to {MAX_JOB_LOCATIONS})
               </span>
             </label>
             <div className="relative">
@@ -621,7 +638,8 @@ export default function JobSearch() {
 
       {data && (
         <>
-          <PlaceNotes checks={data.place_checks ?? []} onUse={swapPlace} />
+          <PlaceNotes checks={data.place_checks ?? []} notSearched={data.places_not_searched ?? []}
+            onUse={swapPlace} />
 
           {data.failed_locations.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
@@ -689,7 +707,8 @@ export default function JobSearch() {
 
           {data.postings.length === 0 && data.estimated_matches.length === 0 && !loose.length ? (
             <p className="text-center text-slate-500 py-16">
-              {(data.place_checks?.length ?? 0) > 0 && !data.place_checks!.some((c) => c.place)
+              {(data.place_checks?.length ?? 0) > 0 && !data.remote_from_place &&
+                !data.place_checks!.some((c) => c.place)
                 ? 'None of the places you entered could be found, so nothing was searched.'
                 : <>Nothing matched honestly. Try relaxing a filter{maxDaysOld ? ' or widening "Date posted"' : ''}.</>}
             </p>
