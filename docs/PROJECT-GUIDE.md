@@ -156,7 +156,9 @@ migration files.
 ## 4. Evaluating a change
 
 Use this list for any feature or review. A change isn't done until each item
-has either been checked or is named as untested in the MR.
+has either been checked or is named as untested in the MR. The roles that
+apply it (planner, builder, SWE tester, peer reviewer) and the change record
+each change carries are described in [AGENTS.md](../AGENTS.md).
 
 ### Must pass
 
