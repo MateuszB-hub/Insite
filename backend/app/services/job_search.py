@@ -33,7 +33,7 @@ from typing import Any
 
 import httpx
 
-from app.services.labor import abbreviations
+from app.services.labor import abbreviations, adzuna_http
 
 logger = logging.getLogger(__name__)
 
@@ -576,9 +576,8 @@ async def search_jobs(
             params["where"] = place
         if title:
             params["title_only"] = title
-        response = await client.get(f"{BASE_URL}/jobs/{COUNTRY}/search/{page}", params=params)
-        response.raise_for_status()
-        return response.json()
+        return await adzuna_http.get_json(
+            client, f"{BASE_URL}/jobs/{COUNTRY}/search/{page}", params)
 
     result = SearchResult(
         locations_searched=places,
@@ -609,7 +608,8 @@ async def search_jobs(
         for target, outcome in zip(targets, outcomes):
             if isinstance(outcome, BaseException):
                 # One bad place should not sink the others; say which one failed.
-                logger.warning("job search failed for one location: %s", type(outcome).__name__)
+                logger.warning("job search failed for one location: %s",
+                               adzuna_http.describe(outcome))
                 result.failed_locations.append(target or "")
                 continue
             pages[target] = list(outcome.get("results", []))
