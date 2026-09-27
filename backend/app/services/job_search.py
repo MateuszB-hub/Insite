@@ -27,6 +27,7 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from itertools import chain, zip_longest
 from typing import Any
@@ -40,12 +41,22 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://api.adzuna.com/v1/api"
 
 
+def _created_at(created: str | None) -> "datetime | None":
+    """The date and time an advert claims it was posted (UTC), if readable."""
+    if not created:
+        return None
+    try:
+        dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 def _age_days(created: str | None) -> int | None:
     """How old the advert claims to be."""
     if not created:
         return None
     try:
-        from datetime import datetime, timezone
         dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
         return (datetime.now(timezone.utc) - dt).days
     except ValueError:
@@ -54,7 +65,6 @@ def _age_days(created: str | None) -> int | None:
 
 def _observed_days(first_seen) -> int:
     """How long WE have actually been seeing this advert."""
-    from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     if first_seen.tzinfo is None:
         first_seen = first_seen.replace(tzinfo=timezone.utc)
@@ -185,6 +195,9 @@ class SearchResult:
     #: Job-type filter: adverts that didn't state a type / stated another.
     excluded_type_unstated: int = 0
     excluded_other_type: int = 0
+    #: Older than `posted_after` by their own date, though the board's
+    #: whole-day filter let them through.
+    excluded_too_old: int = 0
     #: How the query was matched: "title" (every word in the job title) or
     #: "words" (anywhere in the advert).
     match: str = "title"
@@ -312,7 +325,6 @@ def _record_sightings(postings: list[JobPosting]) -> dict[str, dict[str, Any]]:
                     row.times_seen += 1
                     first = row.first_seen
                     if first.tzinfo is None:
-                        from datetime import timezone
                         first = first.replace(tzinfo=timezone.utc)
                     known[posting.fingerprint] = {
                         "first_seen": first, "times_seen": row.times_seen,
@@ -399,6 +411,10 @@ MAX_PAGES = 3
 #: where an advert says what the job is. Words stay for the loose section.
 STRATEGIES = ("words", "title")
 
+#: Result order: the board's relevance, or newest first ("date").
+SORTS = ("relevance", "date")
+_EPOCH = datetime.min.replace(tzinfo=timezone.utc)
+
 #: Loose (word-anywhere) matches shown apart when title matches run short.
 LOOSE_MAX = 10
 
@@ -442,6 +458,7 @@ class _Filtered:
     excluded_below_salary: int = 0
     excluded_type_unstated: int = 0
     excluded_other_type: int = 0
+    excluded_too_old: int = 0
 
 
 def _apply_filters(
@@ -453,12 +470,21 @@ def _apply_filters(
     include_conflicted_remote: bool,
     limit: int,
     job_type: str | None = None,
+    posted_after: datetime | None = None,
 ) -> _Filtered:
     """Sort candidates into shown / shown-as-estimated / excluded (counted)."""
     out = _Filtered()
     for posting in candidates:
         if len(out.kept) >= limit and len(out.estimated) >= limit:
             break
+
+        # Adzuna's own filter works in whole days and loosely ("past 1 day"
+        # returned adverts 28.6 hours old), so the exact cut-off is ours.
+        if posted_after is not None:
+            created = _created_at(posting.created)
+            if created is not None and created < posted_after:
+                out.excluded_too_old += 1
+                continue
 
         if job_type:
             types = job_types(posting)
@@ -522,6 +548,8 @@ async def search_jobs(
     job_type: str | None = None,
     limit: int = 30,
     strategy: str = "title",
+    posted_after: datetime | None = None,
+    sort: str = "relevance",
 ) -> SearchResult:
     """Search postings and apply filters that never fabricate certainty.
 
@@ -529,7 +557,9 @@ async def search_jobs(
     result; board estimates at or above it come back separately in
     `estimated_matches`, labelled. `require_stated_salary` drops estimates
     entirely. `max_days_old` keeps to recent adverts: testers found anything
-    older than about a week is usually already filled.
+    older than about a week is usually already filled. `posted_after` is an
+    exact cut-off ("past 24 hours", "since 1 September"), and wins over
+    `max_days_old`. `sort="date"` puts the newest first, across all places.
     """
     app_id = os.getenv("ADZUNA_APP_ID", "")
     app_key = os.getenv("ADZUNA_APP_KEY", "")
@@ -537,12 +567,22 @@ async def search_jobs(
         raise RuntimeError("ADZUNA_APP_ID / ADZUNA_APP_KEY not set")
     if job_type is not None and job_type not in JOB_TYPES:
         raise ValueError(f"unknown job type {job_type!r}")
+    if sort not in SORTS:
+        raise ValueError(f"unknown sort {sort!r}")
+    if posted_after is not None:
+        if posted_after.tzinfo is None:
+            posted_after = posted_after.replace(tzinfo=timezone.utc)
+        # The board filters in whole days: ask for enough days to cover the
+        # cut-off, then apply it exactly ourselves.
+        span = datetime.now(timezone.utc) - posted_after
+        max_days_old = min(365, max(1, -(-int(span.total_seconds()) // 86400)))
 
     places = normalize_locations(locations)
     cache_key = (
         " ".join(query.lower().split()), tuple(p.lower() for p in places), salary_min,
         require_stated_salary, remote_only, include_conflicted_remote,
         collapse_duplicates, max_days_old, job_type, limit, strategy,
+        posted_after.isoformat() if posted_after else None, sort,
     )
     cached = _search_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
@@ -567,6 +607,8 @@ async def search_jobs(
         base["salary_min"] = int(salary_min)
     if max_days_old is not None:
         base["max_days_old"] = max_days_old
+    if sort == "date":
+        base["sort_by"] = "date"
     targets: list[str | None] = list(places) or [None]
 
     async def fetch(client: httpx.AsyncClient, place: str | None, page: int,
@@ -597,7 +639,7 @@ async def search_jobs(
         return _apply_filters(
             postings, salary_min=salary_min, require_stated_salary=require_stated_salary,
             remote_only=remote_only, include_conflicted_remote=include_conflicted_remote,
-            limit=limit, job_type=job_type)
+            limit=limit, job_type=job_type, posted_after=posted_after)
 
     async def first_pages(client: httpx.AsyncClient) -> None:
         pages.clear()
@@ -642,7 +684,7 @@ async def search_jobs(
         # Filters that discard most adverts get another page or two, but only
         # while places still have more to give.
         filtering = (salary_min is not None or require_stated_salary or remote_only
-                     or job_type is not None)
+                     or job_type is not None or posted_after is not None)
         for page in range(2, MAX_PAGES + 1):
             if not filtering or len(filtered(build()).kept) >= limit:
                 break
@@ -683,12 +725,18 @@ async def search_jobs(
     result.excluded_below_salary = out.excluded_below_salary
     result.excluded_type_unstated = out.excluded_type_unstated
     result.excluded_other_type = out.excluded_other_type
+    result.excluded_too_old = out.excluded_too_old
 
     # Title matches ran short: say what else merely mentions the words, apart.
     if strategy == "title" and len(result.postings) < limit:
         result.loose_matches = await _loose_matches(
             base, query, targets, fetch_page=fetch, taken={p.fingerprint for p in candidates},
             filtered=filtered)
+
+    if sort == "date":
+        # Places are merged round-robin; newest first means across all of them.
+        for bucket in (result.postings, result.estimated_matches, result.loose_matches):
+            bucket.sort(key=lambda p: _created_at(p.created) or _EPOCH, reverse=True)
 
     if len(_search_cache) >= SEARCH_CACHE_MAX:
         _search_cache.pop(next(iter(_search_cache)), None)

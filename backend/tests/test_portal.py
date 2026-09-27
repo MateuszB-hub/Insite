@@ -371,3 +371,17 @@ def test_resume_is_limited_per_hour(applicant, fake_resume):
     codes = [applicant.post("/api/me/profile/resume", files=_pdf()).status_code
              for _ in range(portal.RESUME_LIMIT + 1)]
     assert codes == [200] * portal.RESUME_LIMIT + [429]
+
+
+
+# --- job search: date posted and sort are checked at the door ----------------
+
+@pytest.mark.parametrize("query, reason", [
+    ("posted_after=2999-01-01T00:00:00Z", "future"),
+    ("posted_after=2001-01-01T00:00:00Z", "within the last year"),
+    ("sort=salary", "sort must be one of"),
+])
+def test_job_search_refuses_bad_dates_and_sorts(applicant, query, reason):
+    r = applicant.get(f"/api/jobs/search?q=nurse&{query}")
+    assert r.status_code == 422
+    assert reason in r.json()["detail"]

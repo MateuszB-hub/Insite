@@ -584,6 +584,8 @@ export interface JobSearchResponse {
   match?: 'title' | 'words'
   /** Adverts that only mention the words somewhere. Shown apart, labelled. */
   loose_matches?: JobPosting[]
+  /** Older than the date asked for, though the board's whole-day filter let them in. */
+  excluded_too_old?: number
   /** Other spellings also searched, learned from O*NET ("RN" for "registered nurse"). */
   also_searched?: string[]
 }
@@ -608,6 +610,10 @@ export async function searchJobs(params: {
   remoteOnly?: boolean
   includeConflictedRemote?: boolean
   maxDaysOld?: number
+  /** Exact cut-off (ISO 8601): only adverts posted at or after it. */
+  postedAfter?: string
+  /** "relevance" (the board's order) or "date" (newest first). */
+  sort?: 'relevance' | 'date'
   jobType?: JobType
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
@@ -619,6 +625,8 @@ export async function searchJobs(params: {
   if (params.includeConflictedRemote) qs.set('include_conflicted_remote', 'true')
   if (params.maxDaysOld) qs.set('max_days_old', String(params.maxDaysOld))
   if (params.jobType) qs.set('job_type', params.jobType)
+  if (params.postedAfter) qs.set('posted_after', params.postedAfter)
+  if (params.sort && params.sort !== 'relevance') qs.set('sort', params.sort)
 
   const res = await apiFetch(`/api/jobs/search?${qs}`, { ...withCreds, signal: params.signal })
   if (!res.ok) throw new Error(await readError(res))

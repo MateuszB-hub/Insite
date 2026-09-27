@@ -1,12 +1,13 @@
 """Job search with honest provenance."""
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.auth.deps import CurrentUser
-from app.services.job_search import JOB_TYPES, MAX_LOCATIONS, normalize_locations, search_jobs
+from app.services.job_search import JOB_TYPES, MAX_LOCATIONS, SORTS, normalize_locations, search_jobs
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -67,6 +68,8 @@ class JobSearchResponse(BaseModel):
     match: str = "title"
     #: Adverts that only mention the words somewhere; shown apart, labelled.
     loose_matches: list[JobOut] = []
+    #: Older than posted_after by their own date (the board filters by day).
+    excluded_too_old: int = 0
     #: Other spellings of the title also searched, e.g. "quality assurance lead".
     also_searched: list[str] = []
 
@@ -87,6 +90,11 @@ async def job_search(
     # full_time | part_time | contract | permanent. Filtered on what adverts
     # state; the ones that don't say are counted, not hidden silently.
     job_type: str | None = Query(None),
+    # Exact cut-off, e.g. 24 hours ago or the start of a chosen day (ISO 8601
+    # with an offset). Wins over max_days_old.
+    posted_after: datetime | None = Query(None),
+    # "relevance" (the board's order) or "date" (newest first).
+    sort: str = Query("relevance"),
     limit: int = Query(30, ge=1, le=50),
 ):
     """Search postings, keeping every provenance signal intact.
@@ -102,6 +110,16 @@ async def job_search(
     places = normalize_locations(where)
     if job_type is not None and job_type not in JOB_TYPES:
         raise HTTPException(422, f"job_type must be one of: {', '.join(JOB_TYPES)}.")
+    if sort not in SORTS:
+        raise HTTPException(422, f"sort must be one of: {', '.join(SORTS)}.")
+    if posted_after is not None:
+        if posted_after.tzinfo is None:
+            posted_after = posted_after.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        if posted_after > now + timedelta(hours=1):
+            raise HTTPException(422, "The posted date can't be in the future.")
+        if posted_after < now - timedelta(days=365):
+            raise HTTPException(422, "Pick a posted date within the last year.")
 
     try:
         result = await search_jobs(
@@ -112,6 +130,8 @@ async def job_search(
             include_conflicted_remote=include_conflicted_remote,
             max_days_old=max_days_old,
             job_type=job_type,
+            posted_after=posted_after,
+            sort=sort,
             limit=limit,
         )
     except RuntimeError as exc:
@@ -137,4 +157,5 @@ async def job_search(
         match=result.match,
         loose_matches=[JobOut(**p.to_dict()) for p in result.loose_matches],
         also_searched=result.also_searched,
+        excluded_too_old=result.excluded_too_old,
     )
