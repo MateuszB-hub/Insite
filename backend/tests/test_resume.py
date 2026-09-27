@@ -151,3 +151,13 @@ def test_resume_dates_are_read_in_the_styles_people_write(value, expected):
     # The model returns dates as the résumé writes them, whatever it's asked.
     got = resume._month_index(value, TODAY)
     assert (None if got is None else (got // 12, got % 12 + 1)) == expected
+
+
+
+def test_summary_that_guesses_gender_is_dropped():
+    # "She" in a summary is the model guessing gender from a name.
+    got = resume.check({**EXTRACTED, "summary": "Dana is a nurse. She has worked in triage."}, TEXT, TODAY)
+    assert got["fields"]["summary"] is None
+    assert got["dropped"]["summary"] == 1
+    neutral = resume.check({**EXTRACTED, "summary": "Registered nurse with triage experience."}, TEXT, TODAY)
+    assert neutral["fields"]["summary"] == "Registered nurse with triage experience."

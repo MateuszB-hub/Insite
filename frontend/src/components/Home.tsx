@@ -141,7 +141,7 @@ export default function Home() {
     {
       done: Boolean(role),
       title: 'Tell us your role and where you want to work',
-      detail: 'Your profile picks the jobs below and fills in the other pages for you.',
+      detail: 'Your profile picks the jobs below and fills in the other pages for you. Upload your résumé and it fills itself in.',
       to: '/profile',
       cta: 'Fill in profile',
     },

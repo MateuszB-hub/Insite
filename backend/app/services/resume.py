@@ -137,8 +137,10 @@ def build_prompt(text: str) -> str:
         "written, at most 25. No soft-skill filler that isn't in the text.\n"
         "- certifications: certifications and licences, copied as written.\n"
         "- industry: one or two words for the industry of their recent work.\n"
-        "- summary: one or two plain sentences describing their experience, in "
-        "the third person is fine; no praise, no claims not in the résumé.\n"
+        "- summary: one or two plain sentences describing their experience, "
+        "starting with their role (e.g. \"Registered nurse with experience in "
+        "...\"). Never use their name and never use he, she, his, her or they. "
+        "No praise, no claims not in the résumé.\n"
         "- Leave out anything that isn't in the résumé. Never invent.\n\n"
         "=== RÉSUMÉ START ===\n"
         f"{text}\n"
@@ -172,6 +174,8 @@ def _clean_list(items: Any, haystack: str, cap: int) -> tuple[list[str], int]:
             dropped += 1
     return kept[:cap], dropped
 
+
+_GENDERED = re.compile(r"\b(he|she|him|his|her|hers|himself|herself)\b", re.I)
 
 _MONTHS = {
     name: i
@@ -273,6 +277,11 @@ def check(extracted: dict, text: str, today: date | None = None) -> dict:
     recent = _most_recent(jobs, today)
     industry = " ".join(str(extracted.get("industry") or "").split())[:200]
     summary = " ".join(str(extracted.get("summary") or "").split())[:600]
+    # A pronoun is the model guessing gender from a name; misgendering
+    # someone in their own profile is worse than leaving the summary blank.
+    if _GENDERED.search(summary):
+        dropped["summary"] = 1
+        summary = ""
 
     fields = {
         "current_role": recent["title"] if recent else None,
