@@ -127,3 +127,57 @@ by real population.
   - 5-digit ZIPs pass the client-side check
 - **Differs from plan:** none. The borough note uses the borough's own name, not the raw input ("Brooklyn", not "brooklyn ny").
 - **Checks:** pytest 326 passed; `npm run typecheck` and `npm run build` pass.
+
+## Tests
+*SWE tester, done inline, written from the criteria above.*
+
+| Criterion / edge case | Test | Result |
+|---|---|---|
+| 1 boroughs, and a state suffix wins | `test_how_people_type_places` (Brooklyn, brooklyn ny, The Bronx, Queens NY, Staten Island, Brooklyn, OH) | pass |
+| 2 remote words | same table (Remote, wfh, Work from home); `test_remote_typed_as_a_place_searches_nationwide_remote_only` | pass |
+| 3 ZIP codes | same table (78701, 78701-1234, "Austin, TX 78701", 00901, 00000, 123456); `test_every_zip_points_at_a_known_place` | pass |
+| 4 regions, "greater … area" | same table (Bay Area, DFW, twin cities, Greater Boston area, Denver metro); `test_region_and_borough_places_are_real_labels` | pass |
+| 5 outside the US | same table (London, Tokyo, M5V 2T6, SW1A 1AA); `test_a_foreign_city_gets_no_fuzzy_near_miss` | pass |
+| 6 accents | same table (San José, Canon City) | pass |
+| 7 ranking of uncounted places | same table (San Juan → PR) | pass |
+| 8 wrong state | same table (Austin, CA); `test_a_wrong_state_suggests_where_the_name_is_real` | pass |
+| 9 state alternative first | `test_a_name_that_is_also_a_state_offers_the_state_first` | pass |
+| 10 cap of 3, extras named | `test_a_region_is_searched_as_its_cities_and_extras_are_named` | pass |
+| 11 no regressions | full suite; places browser demo | pass |
+| UI: borough/ZIP notes, tags, Remote box ticked | `places-demo.mjs` (4 new checks) | 15/15 |
+
+**Tested:**
+- pytest: **377 passed**, 0 failed, 0 xfail
+- `npm run typecheck` and `npm run build`
+- places demo **15/15**, in Chromium, against the worktree on :8001/:5174; 5 live Adzuna calls
+- worst-case resolve time 0.7 ms at 120 characters
+
+**Not tested:**
+- Safari, Firefox, mobile layout and screen readers
+- live Adzuna results for ZIP-derived and region cities beyond the demo's searches
+- the browser demo ran before the R1 data change below; that change is covered by pytest only
+- neighbourhoods other than NYC boroughs (Harlem → Harlem, GA; Hollywood → Hollywood, FL)
+
+**Bugs found** (beyond the criteria; pinned as strict xfails in commit "Tests for place fixes", fixed in "fix B1–B4"):
+- B1 "Paris, France", "London, UK", "Toronto ON" got no US-only note, and London, UK suggested London, OH.
+- B2 "Austin (remote)", "Remote - Austin, TX" were unknown.
+- B3 "Austin, TX 00000" hid the city behind a non-ZIP.
+- B4 "Bay Area, CA" was unknown.
+
+## Review
+*Peer reviewer, done inline. Diff read in full; suite and build re-run.*
+
+**Verdict:** APPROVED (after R1 was fixed)
+
+| ID | Sev | File:line | Finding | Resolution |
+|---|---|---|---|---|
+| R1 | H | `backend/app/services/places.py` (wrong-state note), `vendor_places.py` | Edison, NJ (107k) and Cherry Hill, NJ are townships, not Census places, so they were unknown, and the new note said "There's no Edison in New Jersey": a false statement | Fixed: functioning towns and townships in the 12 states where they govern are now places (+5,286; 40,606 total, 2,821 without population), and the note says "We couldn't find" |
+| R2 | M | `places.py` | Adding townships let "Texas" resolve to Texas township, PA | Fixed: a bare state name is the state unless a 500k+ city carries it (`STATE_NAMESAKE`) |
+| R3 | L | `places.py` `FOREIGN` | Real US cities that share a foreign name (Manchester, NH; Vancouver, WA) carry the "US jobs only" note | Accepted: the note still names the US place searched, so it's accurate |
+| R4 | L | `places.py` | Neighbourhoods beyond NYC boroughs still resolve to a same-named town elsewhere, shown as ambiguous with alternatives | Deferred: grow the alias table from real searches |
+
+**Patterns:**
+- P1 (happy path only): avoided. Tester probes beyond the criteria found B1–B4.
+- P7 (vendored data gaps): hit twice and fixed as classes (uncounted places; towns and townships), each measured.
+- P2 (silent failure): the 3-place cap now names what it drops.
+- Rollback is safe: no migration, and old code ignores `zips.json`.
