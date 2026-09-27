@@ -12,10 +12,11 @@ export default function LoginPage() {
   const location = useLocation()
   const { login, register } = useAuth()
 
-  // An invite link (/login?invite=CODE) opens straight into registration
-  // with the code filled in, so invitees never have to copy it by hand.
+  // An invite link (/login?invite=CODE) fills the code in, so invitees never
+  // copy it by hand. It still opens on sign-in: the same link gets reused
+  // (bookmarked, shared again) by people who already have an account.
   const invitedWith = new URLSearchParams(location.search).get('invite') ?? ''
-  const [isRegister, setIsRegister] = useState(invitedWith !== '')
+  const [isRegister, setIsRegister] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -81,6 +82,16 @@ export default function LoginPage() {
           <h2 className="text-xl font-semibold text-slate-900 mb-6">
             {isRegister ? 'Create an Account' : 'Welcome Back'}
           </h2>
+          {!isRegister && invitedWith && (
+            <p className="text-sm text-indigo-800 bg-indigo-50 rounded-lg px-3 py-2 mb-4">
+              New here? You've been invited.{' '}
+              <button type="button" onClick={() => { setIsRegister(true); setError(null) }}
+                className="font-medium underline">
+                Create your account
+              </button>{' '}
+              and your invite code is filled in.
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {isRegister && (
