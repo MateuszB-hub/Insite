@@ -39,11 +39,17 @@ logger = logging.getLogger(__name__)
 
 MAX_BYTES = 5 * 1024 * 1024
 MAX_PAGES = 10
-#: Enough for a long résumé; keeps the prompt inside a small model's context.
-MAX_CHARS = 20_000
+#: Enough for a long résumé (a 7-page one is ~25k); the model's context is
+#: sized to fit it (ollama_provider.context_size). At 20k, a long résumé lost
+#: its last pages -- certifications and earliest jobs included.
+MAX_CHARS = 30_000
 #: Less text than this is almost certainly a scan (images, no text layer).
 MIN_CHARS = 120
 READ_TIMEOUT_S = 15.0
+#: The whole model step. A 7-page résumé takes ~70 s on the host's 8B model,
+#: more when cold or queued. The page polls for the result (routes/portal.py),
+#: so this isn't bound by Cloudflare's 100 s request limit.
+MODEL_TIMEOUT_S = 240.0
 
 MAX_SKILLS = 25
 MAX_CERTS = 15
@@ -98,27 +104,34 @@ async def read_pdf(data: bytes) -> tuple[str, int]:
 
 # --- extracting ---------------------------------------------------------------
 
+#: Limits live in the schema, not just the prompt: Ollama's constrained
+#: decoding enforces them, where "at most 25" in words was ignored -- a 7-page
+#: résumé had the model listing until it hit the output cap (130 s, no JSON).
+MAX_JOBS = 20
+_TEXT = {"type": "string", "maxLength": 120}
+
 SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "jobs": {
             "type": "array",
+            "maxItems": MAX_JOBS,
             "items": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string"},
-                    "employer": {"type": "string"},
-                    "start": {"type": "string", "description": "YYYY-MM or YYYY"},
-                    "end": {"type": "string", "description": "YYYY-MM, YYYY or present"},
+                    "title": _TEXT,
+                    "employer": _TEXT,
+                    "start": {"type": "string", "maxLength": 10, "description": "YYYY-MM or YYYY"},
+                    "end": {"type": "string", "maxLength": 10, "description": "YYYY-MM, YYYY or present"},
                 },
                 "required": ["title", "start", "end"],
             },
         },
-        "location": {"type": "string"},
-        "skills": {"type": "array", "items": {"type": "string"}},
-        "certifications": {"type": "array", "items": {"type": "string"}},
-        "industry": {"type": "string"},
-        "summary": {"type": "string"},
+        "location": _TEXT,
+        "skills": {"type": "array", "maxItems": MAX_SKILLS, "items": _TEXT},
+        "certifications": {"type": "array", "maxItems": MAX_CERTS, "items": _TEXT},
+        "industry": {"type": "string", "maxLength": 60},
+        "summary": {"type": "string", "maxLength": 400},
     },
     "required": ["jobs", "skills", "certifications"],
 }
@@ -309,13 +322,23 @@ def check(extracted: dict, text: str, today: date | None = None) -> dict:
 async def suggest_profile(data: bytes) -> dict:
     """PDF bytes -> checked profile suggestions. Saves nothing."""
     text, pages = await read_pdf(data)
+    return await suggest_from_text(text, pages)
+
+
+async def suggest_from_text(text: str, pages: int) -> dict:
+    """Résumé text -> checked profile suggestions: the slow, model step."""
     try:
         provider = await get_provider("ollama")
     except ProviderError as exc:
         raise ResumeError("Reading résumés needs Insite's local AI model, which is off "
                           "right now. Please try again later, or fill in the form by hand.") from exc
     try:
-        extracted = await provider.generate_json(build_prompt(text), SCHEMA)
+        extracted = await asyncio.wait_for(
+            provider.generate_json(build_prompt(text), SCHEMA), MODEL_TIMEOUT_S)
+    except asyncio.TimeoutError as exc:
+        logger.warning("résumé extraction took over %.0fs", MODEL_TIMEOUT_S)
+        raise ResumeError("Reading this résumé is taking too long right now. Please try "
+                          "again in a minute, or fill in the form by hand.") from exc
     except ProviderError as exc:
         logger.warning("résumé extraction failed: %s", type(exc).__name__)
         raise ResumeError("The résumé couldn't be read just now. Please try again, "

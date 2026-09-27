@@ -161,3 +161,19 @@ def test_summary_that_guesses_gender_is_dropped():
     assert got["dropped"]["summary"] == 1
     neutral = resume.check({**EXTRACTED, "summary": "Registered nurse with triage experience."}, TEXT, TODAY)
     assert neutral["fields"]["summary"] == "Registered nurse with triage experience."
+
+
+def test_a_slow_model_gives_a_plain_message(monkeypatch):
+    # The page polls, so this limit isn't Cloudflare's 100 s -- but a stuck
+    # model still ends in words the person can act on.
+
+    class SlowModel(FakeModel):
+        async def generate_json(self, prompt, schema):
+            await asyncio.sleep(5)
+
+    async def slow(name=None):
+        return SlowModel()
+    monkeypatch.setattr(resume, "get_provider", slow)
+    monkeypatch.setattr(resume, "MODEL_TIMEOUT_S", 0.05)
+    with pytest.raises(resume.ResumeError, match="taking too long"):
+        asyncio.run(resume.suggest_profile(make_pdf(NURSE)))

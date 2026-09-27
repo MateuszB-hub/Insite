@@ -24,6 +24,22 @@ DEFAULT_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
 # Local generation on consumer hardware is slow; this is generous on purpose.
 DEFAULT_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "300"))
+# Ollama's own context window is 2-4k tokens, and a longer prompt is cut
+# without a word: a 7-page résumé (~4,300 tokens) reached the model as 2,050,
+# and the model then ran on to the timeout without closing its JSON. So the
+# window is sized to each prompt, and the answer's length is capped.
+MAX_OUTPUT_TOKENS = int(os.getenv("OLLAMA_NUM_PREDICT", "2048"))
+MAX_CONTEXT = int(os.getenv("OLLAMA_NUM_CTX_MAX", "16384"))
+MIN_CONTEXT = 4096
+
+
+def context_size(prompt: str, output_tokens: int = MAX_OUTPUT_TOKENS) -> int:
+    """Tokens of context for this prompt plus its answer, rounded up to 1k.
+
+    Three characters a token is on the safe side (English runs ~4-5), so the
+    prompt is never cut; capped so memory stays bounded."""
+    needed = len(prompt) // 3 + output_tokens + 256
+    return max(MIN_CONTEXT, min(MAX_CONTEXT, -(-needed // 1024) * 1024))
 
 
 class OllamaProvider(SynthesisProvider):
@@ -107,6 +123,8 @@ class OllamaProvider(SynthesisProvider):
             "options": {
                 # Low temperature: this is an extraction/summarization task.
                 "temperature": 0.3,
+                "num_ctx": context_size(prompt),
+                "num_predict": MAX_OUTPUT_TOKENS,
             },
         }
 
@@ -126,6 +144,10 @@ class OllamaProvider(SynthesisProvider):
         content = (payload.get("message") or {}).get("content", "")
         if not content:
             raise ProviderUnavailable("Ollama returned an empty response")
+        if payload.get("done_reason") == "length":
+            # Cut off mid-answer: the JSON can't be complete, so say why.
+            logger.warning("ollama answer hit the %d-token cap", MAX_OUTPUT_TOKENS)
+            raise ProviderUnavailable("Local model's answer ran past its length limit")
 
         try:
             return json.loads(content)
