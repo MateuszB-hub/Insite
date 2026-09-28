@@ -115,6 +115,17 @@ def _tokens(text: str) -> set[str]:
     return {_singular(w) for w in words if w not in _NOISE and len(w) > 1}
 
 
+def tokens(text: str) -> set[str]:
+    """Words as the title index holds them (lower case, singular)."""
+    return set(_tokens(text))
+
+
+@lru_cache(maxsize=1)
+def title_vocabulary() -> frozenset[str]:
+    """Every word used in any known job title."""
+    return frozenset(_title_index()[1])
+
+
 def get(code: str) -> dict | None:
     return _by_code().get(code)
 

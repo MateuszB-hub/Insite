@@ -127,7 +127,8 @@ def variants(query: str, limit: int = 2) -> list[str]:
     for i, word in enumerate(words):
         if word in _NOT_ACRONYMS:
             continue
-        for expansion in table.get(word, [])[:limit]:
+        # "vp" -> "vice president's": a possessive is no title anyone searches.
+        for expansion in [e for e in table.get(word, []) if "'" not in e][:limit]:
             out.append(" ".join(words[:i] + [expansion] + words[i + 1:]))
 
     joined = " ".join(words)

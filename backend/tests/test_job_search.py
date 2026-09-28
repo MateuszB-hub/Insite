@@ -548,3 +548,66 @@ def test_unknown_sort_is_refused(monkeypatch):
     _fake_adzuna(monkeypatch, {None: []}, count=0)
     with pytest.raises(ValueError):
         asyncio.run(search_jobs("engineer", sort="salary"))
+
+
+# --- mentor round 3: long titles, hidden adverts, distance -------------------
+
+@pytest.mark.parametrize("title, cores", [
+    ("VP EAC Compliance & Operational Risk Specialist",
+     ["compliance specialist", "operational risk specialist"]),
+    ("Senior Software Engineer", ["software engineer"]),
+    ("Sr. Director, Clinical Operations", ["director clinical operations"]),   # a comma joins nothing
+    ("Registered Nurse", []),                                                   # nothing to drop
+    ("zzzz qqqq", []),
+])
+def test_the_job_inside_a_long_title(title, cores):
+    assert job_search.core_titles(title) == cores
+
+
+def test_no_possessive_spellings_are_searched():
+    from app.services.labor import abbreviations
+    assert not any("'" in v for v in abbreviations.variants("VP Compliance Specialist"))
+
+
+def test_a_title_nothing_matches_is_searched_by_its_core_and_says_so(monkeypatch):
+    asked = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        title = request.url.params.get("title_only")
+        asked.append(title)
+        if title == "compliance specialist":
+            return httpx.Response(200, json={"count": 1, "results": [
+                posting(id="c1", title="Compliance Specialist", description="Reviews.")]})
+        return httpx.Response(200, json={"count": 0, "results": []})
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(job_search.httpx, "AsyncClient",
+                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(job_search, "_record_sightings", lambda postings: {})
+    monkeypatch.setattr(job_search.abbreviations, "variants", lambda query: [])
+    monkeypatch.setenv("ADZUNA_APP_ID", "id")
+    monkeypatch.setenv("ADZUNA_APP_KEY", "key")
+
+    r = asyncio.run(job_search.search_jobs("VP EAC Compliance & Operational Risk Specialist", []))
+    assert r.broadened_to == ["compliance specialist", "operational risk specialist"]
+    assert [p.title for p in r.postings] == ["Compliance Specialist"]
+
+
+def test_hidden_adverts_come_back_with_their_reason(monkeypatch):
+    _fake_adzuna(monkeypatch, {None: [
+        _paid("alpha", 150000, 160000, "0"),     # stated, clears the floor: shown
+        _paid("bravo", 50000, 60000, "0"),       # stated, below the floor
+        posting(id="charlie", title="Engineer charlie", description="No pay here."),
+    ]}, count=3)
+    r = asyncio.run(job_search.search_jobs("engineer", [], salary_min=100000))
+    reasons = {p.title: reason for p, reason in r.hidden}
+    assert reasons == {"Engineer bravo": "Pay below your minimum",
+                       "Engineer charlie": "No pay stated"}
+    assert r.excluded_below_salary == 1 and r.excluded_no_salary == 1
+
+
+def test_distance_is_sent_to_the_board_in_km(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {"Austin, TX": [posting()]}, requests=requests)
+    asyncio.run(job_search.search_jobs("engineer", ["Austin, TX"], distance_km=40))
+    assert requests[0]["distance"] == "40"

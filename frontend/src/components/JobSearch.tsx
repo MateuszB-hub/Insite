@@ -163,6 +163,10 @@ export default function JobSearch() {
   //: "Custom date…": posted on or after this day (YYYY-MM-DD).
   const [since, setSince] = useState(() => isoDay(new Date(Date.now() - 14 * 86_400_000)))
   const [sort, setSort] = useState<Sort>('relevance')
+  // The board's own radius is ~5 miles (measured: Austin nurses 662 at its
+  // default, 919 at 25 miles); 25 is what job sites usually start with.
+  const [distance, setDistance] = useState(25)
+  const [showHidden, setShowHidden] = useState(false)
   const [requireStated, setRequireStated] = useState(false)
   const [remoteOnly, setRemoteOnly] = useState(false)
   const [includeConflicted, setIncludeConflicted] = useState(false)
@@ -288,11 +292,13 @@ export default function JobSearch() {
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         postedAfter: postedAfter(when.posted, when.since),
         sort: when.sort,
+        distance: where.length ? distance : undefined,
         requireStatedSalary: requireStated,
         remoteOnly,
         includeConflictedRemote: includeConflicted,
       })
       setData(found)
+      setShowHidden(false)
       // Tags become what was actually searched ("new york" -> "New York, NY");
       // unknown and junk ones drop out, and PlaceNotes says why.
       if (found.place_checks?.length) {
@@ -576,6 +582,15 @@ export default function JobSearch() {
             </label>
           )}
           <label className="flex items-center gap-2 text-sm text-slate-700">
+            Within
+            <select id="distance" value={distance} onChange={(e) => setDistance(Number(e.target.value))}
+              disabled={!places.length && !placeDraft.trim()}
+              title={!places.length && !placeDraft.trim() ? 'Add a location first' : undefined}
+              className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-50 disabled:text-slate-400">
+              {[5, 10, 25, 50].map((m) => <option key={m} value={m}>{m} miles</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             Sort
             <select id="sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)}
               className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -651,7 +666,15 @@ export default function JobSearch() {
             </div>
           )}
 
-          {data.match === 'title' && (
+          {(data.broadened_to?.length ?? 0) > 0 && (
+            <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3"
+              data-testid="broadened-note">
+              No job titles had every word of "{q.trim()}", so this shows jobs titled{' '}
+              {data.broadened_to!.map((t) => `"${t}"`).join(' or ')} instead.
+            </p>
+          )}
+
+          {data.match === 'title' && !(data.broadened_to?.length) && (
             <p className="text-sm text-slate-500 mb-3" data-testid="match-note">
               Jobs with {multiWord ? <>every word of "{q.trim()}"</> : <>"{q.trim()}"</>} in the job title
               {data.also_searched && data.also_searched.length > 0 && (
@@ -702,6 +725,22 @@ export default function JobSearch() {
                     date filter only works in whole days)</li>
                 )}
               </ul>
+              {(data.hidden?.length ?? 0) > 0 && (
+                <button type="button" onClick={() => setShowHidden((v) => !v)}
+                  className="mt-2 text-sm font-medium text-indigo-700 hover:underline">
+                  {showHidden ? 'Hide them again' : `Show the ${data.hidden!.length} hidden job${data.hidden!.length === 1 ? '' : 's'}`}
+                </button>
+              )}
+              {showHidden && (
+                <div className="grid gap-3 mt-3" data-testid="hidden-jobs">
+                  {data.hidden!.map((job) => (
+                    <div key={`hidden-${job.id}`}>
+                      <p className="text-xs font-medium text-amber-800 mb-1" data-testid="hidden-reason">Hidden: {job.hidden_reason}</p>
+                      {renderJob(job, 'loose')}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

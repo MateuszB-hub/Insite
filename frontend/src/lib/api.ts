@@ -564,6 +564,8 @@ export type SalarySource = 'stated' | 'estimated' | 'absent'
 export type RemoteClaim = 'remote' | 'conflicted' | 'onsite' | 'unknown'
 
 export interface JobPosting {
+  /** Only on hidden adverts: which filter removed it. */
+  hidden_reason?: string | null
   id: string
   title: string
   company?: string | null
@@ -621,6 +623,10 @@ export interface JobSearchResponse {
   remote_from_place?: boolean
   /** Other spellings also searched, learned from O*NET ("RN" for "registered nurse"). */
   also_searched?: string[]
+  /** Nothing had every word of the title, so these were searched instead. */
+  broadened_to?: string[]
+  /** What the filters removed, each with its `hidden_reason`. */
+  hidden?: JobPosting[]
 }
 
 /** Adzuna takes one place per query; the backend runs up to this many. */
@@ -666,6 +672,8 @@ export async function searchJobs(params: {
   postedAfter?: string
   /** "relevance" (the board's order) or "date" (newest first). */
   sort?: 'relevance' | 'date'
+  /** Miles around each place (5, 10, 25 or 50). */
+  distance?: number
   jobType?: JobType
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
@@ -678,6 +686,7 @@ export async function searchJobs(params: {
   if (params.maxDaysOld) qs.set('max_days_old', String(params.maxDaysOld))
   if (params.jobType) qs.set('job_type', params.jobType)
   if (params.postedAfter) qs.set('posted_after', params.postedAfter)
+  if (params.distance) qs.set('distance', String(params.distance))
   if (params.sort && params.sort !== 'relevance') qs.set('sort', params.sort)
 
   const res = await apiFetch(`/api/jobs/search?${qs}`, { ...withCreds, signal: params.signal })

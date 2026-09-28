@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+#: Radius around each place, in miles (the board takes km). Mentor: "for
+#: city you might also consider a distance range."
+DISTANCES_MILES = (5, 10, 25, 50)
+
+
 class JobOut(BaseModel):
     id: str
     title: str
@@ -29,6 +34,8 @@ class JobOut(BaseModel):
     salary_max: float | None = None
     #: "stated" (employer said so) | "estimated" (aggregator guessed) | "absent"
     salary_source: str
+    #: Only in `hidden`: which filter removed it, in plain words.
+    hidden_reason: str | None = None
     #: "remote" | "conflicted" | "onsite" | "unknown"
     remote_claim: str
     #: Why a claim was judged conflicted, in plain English.
@@ -99,6 +106,11 @@ class JobSearchResponse(BaseModel):
     remote_from_place: bool = False
     #: Other spellings of the title also searched, e.g. "quality assurance lead".
     also_searched: list[str] = []
+    #: Nothing had every word of the title, so these were searched instead
+    #: ("compliance specialist" for "VP EAC Compliance … Specialist").
+    broadened_to: list[str] = []
+    #: What the filters removed, each with `hidden_reason`, to show on request.
+    hidden: list[JobOut] = []
 
 
 @router.get("/jobs/search", response_model=JobSearchResponse)
@@ -122,6 +134,7 @@ async def job_search(
     posted_after: datetime | None = Query(None),
     # "relevance" (the board's order) or "date" (newest first).
     sort: str = Query("relevance"),
+    distance: int | None = Query(None),
     limit: int = Query(30, ge=1, le=50),
 ):
     """Search postings, keeping every provenance signal intact.
@@ -151,6 +164,8 @@ async def job_search(
     place_checks = [PlaceCheck(**vars(c)) for c in checks]
     if job_type is not None and job_type not in JOB_TYPES:
         raise HTTPException(422, f"job_type must be one of: {', '.join(JOB_TYPES)}.")
+    if distance is not None and distance not in DISTANCES_MILES:
+        raise HTTPException(422, f"distance must be one of: {', '.join(map(str, DISTANCES_MILES))} (miles).")
     if sort not in SORTS:
         raise HTTPException(422, f"sort must be one of: {', '.join(SORTS)}.")
     if posted_after is not None:
@@ -179,6 +194,7 @@ async def job_search(
             job_type=job_type,
             posted_after=posted_after,
             sort=sort,
+            distance_km=round(distance * 1.609) if distance else None,
             limit=limit,
         )
     except RuntimeError as exc:
@@ -207,6 +223,8 @@ async def job_search(
         match=result.match,
         loose_matches=[JobOut(**p.to_dict()) for p in result.loose_matches],
         also_searched=result.also_searched,
+        broadened_to=result.broadened_to,
+        hidden=[JobOut(**p.to_dict(), hidden_reason=reason) for p, reason in result.hidden],
         excluded_too_old=result.excluded_too_old,
     )
 
