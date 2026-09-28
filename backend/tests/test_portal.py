@@ -537,3 +537,34 @@ def test_a_place_marked_remote_searches_it_remote_only(applicant, monkeypatch):
     assert r.status_code == 200, r.text
     assert seen == {"places": ["Austin, TX"], "remote_only": True}
     assert r.json()["remote_from_place"] is True
+
+
+def test_distance_is_checked_and_passed_in_km(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import SearchResult
+    seen = {}
+
+    async def fake_search(q, places, **kwargs):
+        seen["distance_km"] = kwargs["distance_km"]
+        return SearchResult(locations_searched=places)
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    assert applicant.get("/api/jobs/search?q=nurse&where=Austin&distance=7").status_code == 422
+    r = applicant.get("/api/jobs/search?q=nurse&where=Austin&distance=25")
+    assert r.status_code == 200, r.text
+    assert seen["distance_km"] == 40
+
+
+def test_hidden_adverts_are_returned_with_their_reason(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import JobPosting, SalarySource, SearchResult
+
+    async def fake_search(q, places, **kwargs):
+        hidden = JobPosting(id="h1", title="QA Lead", company="Acme", location="Austin",
+                            url="https://x", fingerprint="f", salary_source=SalarySource.absent)
+        return SearchResult(locations_searched=places, excluded_no_salary=1,
+                            hidden=[(hidden, "No pay stated")])
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    body = applicant.get("/api/jobs/search?q=qa%20lead").json()
+    assert [(h["title"], h["hidden_reason"]) for h in body["hidden"]] == [("QA Lead", "No pay stated")]

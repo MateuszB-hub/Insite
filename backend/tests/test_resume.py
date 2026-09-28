@@ -157,7 +157,8 @@ def test_resume_dates_are_read_in_the_styles_people_write(value, expected):
 def test_summary_that_guesses_gender_is_dropped():
     # "She" in a summary is the model guessing gender from a name.
     got = resume.check({**EXTRACTED, "summary": "Dana is a nurse. She has worked in triage."}, TEXT, TODAY)
-    assert got["fields"]["summary"] is None
+    assert got["fields"]["summary"] == "Registered Nurse with 11 years of experience."   # facts only
+    assert got["sources"]["summary"] == "written from your job titles and dates"
     assert got["dropped"]["summary"] == 1
     neutral = resume.check({**EXTRACTED, "summary": "Registered nurse with triage experience."}, TEXT, TODAY)
     assert neutral["fields"]["summary"] == "Registered nurse with triage experience."
@@ -184,7 +185,7 @@ def test_summary_with_a_role_the_resume_does_not_hold_is_dropped():
     # the model copied an example out of its own instructions.
     wrong = resume.check({**EXTRACTED, "summary": "Software engineer with experience in triage."},
                          TEXT, TODAY)
-    assert wrong["fields"]["summary"] is None
+    assert wrong["fields"]["summary"] == "Registered Nurse with 11 years of experience."
     assert wrong["dropped"]["summary"] == 1
     right = resume.check({**EXTRACTED, "summary": "Experienced registered nurse with triage work."},
                          TEXT, TODAY)

@@ -208,6 +208,10 @@ class SearchResult:
     #: Other spellings of the title also searched ("quality assurance lead"
     #: for "QA lead"), learned from O*NET. Empty when none were needed.
     also_searched: list[str] = field(default_factory=list)
+    #: Nothing had every word of the title, so these were searched instead.
+    broadened_to: list[str] = field(default_factory=list)
+    #: Adverts the filters removed, each with its reason.
+    hidden: list[tuple["JobPosting", str]] = field(default_factory=list)
 
 
 def classify_salary(raw: dict[str, Any]) -> SalarySource:
@@ -374,6 +378,59 @@ def _collapse_duplicates(postings: list[JobPosting]) -> tuple[list[JobPosting], 
 #: Adzuna takes one place per query, so several places cost one request each.
 MAX_LOCATIONS = 3
 
+#: Mentor: "might be more useful to show what filter blocked it, or an option
+#: to see filtered items." Hidden adverts come back with their reason.
+MAX_HIDDEN = 50
+HIDDEN_REASONS = {
+    "excluded_too_old": "Posted before the date you chose",
+    "excluded_type_unstated": "Doesn't say its job type",
+    "excluded_other_type": "A different job type",
+    "excluded_not_remote": "Not genuinely remote",
+    "excluded_estimated_salary": "Pay is the job board's estimate, not the employer's",
+    "excluded_no_salary": "No pay stated",
+    "excluded_below_salary": "Pay below your minimum",
+}
+
+#: Level words: they rank a job, they don't name it ("VP", "Senior").
+_LEVEL_WORDS = {"vp", "svp", "evp", "avp", "vice", "president", "senior", "sr", "jr", "junior",
+                "principal", "associate", "assistant", "staff", "i", "ii", "iii", "iv"}
+_JOINERS = re.compile(r"\s*(?:&|/|\band\b)\s*")
+
+
+def core_titles(query: str, limit: int = 2) -> list[str]:
+    """The job inside a long, specific title, for when nothing has it all.
+
+    "VP EAC Compliance & Operational Risk Specialist" found nothing: no advert
+    has every one of those words in its title. Level words go, and so do
+    words that appear in none of O*NET's 64k job titles ("EAC", an employer's
+    own term); a title joining two jobs with "&" becomes both, each keeping
+    the shared last word: "compliance specialist", "operational risk specialist".
+    """
+    from app.services.labor import taxonomy
+    vocabulary = taxonomy.title_vocabulary()
+
+    def useful(text: str) -> list[str]:
+        words = re.findall(r"[a-z0-9]+", text.lower())
+        return [w for w in words if w not in _LEVEL_WORDS
+                and taxonomy.tokens(w) and taxonomy.tokens(w) <= vocabulary]
+
+    whole = useful(query)
+    if not whole:
+        return []
+    head = whole[-1]
+    out: list[str] = []
+    for segment in _JOINERS.split(query.lower()):
+        words = useful(segment)
+        if words and words[-1] != head:
+            words.append(head)
+        if words:
+            out.append(" ".join(words))
+    if len(out) < 2:
+        out = [" ".join(whole)]
+    original = " ".join(re.findall(r"[a-z0-9]+", query.lower()))
+    unique = [q for q in dict.fromkeys(out) if q != original]
+    return unique[:limit]
+
 
 def normalize_locations(locations: str | list[str] | None) -> list[str]:
     """Trim, drop blanks and case-insensitive repeats, cap at MAX_LOCATIONS."""
@@ -451,6 +508,8 @@ async def _loose_matches(base, query, targets, *, fetch_page, taken, filtered) -
 @dataclass
 class _Filtered:
     kept: list[JobPosting] = field(default_factory=list)
+    #: What the filters removed, with the reason, so the page can show them.
+    hidden: list[tuple[JobPosting, str]] = field(default_factory=list)
     estimated: list[JobPosting] = field(default_factory=list)
     excluded_estimated_salary: int = 0
     excluded_no_salary: int = 0
@@ -474,6 +533,11 @@ def _apply_filters(
 ) -> _Filtered:
     """Sort candidates into shown / shown-as-estimated / excluded (counted)."""
     out = _Filtered()
+
+    def hide(posting: JobPosting, counter: str) -> None:
+        setattr(out, counter, getattr(out, counter) + 1)
+        if len(out.hidden) < MAX_HIDDEN:
+            out.hidden.append((posting, HIDDEN_REASONS[counter]))
     for posting in candidates:
         if len(out.kept) >= limit and len(out.estimated) >= limit:
             break
@@ -483,16 +547,16 @@ def _apply_filters(
         if posted_after is not None:
             created = _created_at(posting.created)
             if created is not None and created < posted_after:
-                out.excluded_too_old += 1
+                hide(posting, "excluded_too_old")
                 continue
 
         if job_type:
             types = job_types(posting)
             if not types:
-                out.excluded_type_unstated += 1
+                hide(posting, "excluded_type_unstated")
                 continue
             if job_type not in types:
-                out.excluded_other_type += 1
+                hide(posting, "excluded_other_type")
                 continue
 
         if remote_only:
@@ -500,26 +564,26 @@ def _apply_filters(
             if include_conflicted_remote:
                 allowed.add(RemoteClaim.conflicted)
             if posting.remote_claim not in allowed:
-                out.excluded_not_remote += 1
+                hide(posting, "excluded_not_remote")
                 continue
 
         if require_stated_salary and posting.salary_source is not SalarySource.stated:
             if posting.salary_source is SalarySource.estimated:
-                out.excluded_estimated_salary += 1
+                hide(posting, "excluded_estimated_salary")
             else:
-                out.excluded_no_salary += 1
+                hide(posting, "excluded_no_salary")
             continue
 
         if salary_min is not None:
             if posting.salary_source is SalarySource.absent:
-                out.excluded_no_salary += 1
+                hide(posting, "excluded_no_salary")
                 continue
             # Compare against the TOP of the advertised band: a job listed
             # at $100k-$150k can pay $120k, so excluding it would be the
             # mirror of the dishonesty we are fixing. The range is shown, so
             # the user judges it themselves.
             if (posting.salary_max or posting.salary_min or 0) < salary_min:
-                out.excluded_below_salary += 1
+                hide(posting, "excluded_below_salary")
                 continue
             # Only an employer's figure can truly clear a floor. A board's
             # estimate that clears it is still useful -- employer-stated pay
@@ -550,6 +614,7 @@ async def search_jobs(
     strategy: str = "title",
     posted_after: datetime | None = None,
     sort: str = "relevance",
+    distance_km: int | None = None,
 ) -> SearchResult:
     """Search postings and apply filters that never fabricate certainty.
 
@@ -582,7 +647,7 @@ async def search_jobs(
         " ".join(query.lower().split()), tuple(p.lower() for p in places), salary_min,
         require_stated_salary, remote_only, include_conflicted_remote,
         collapse_duplicates, max_days_old, job_type, limit, strategy,
-        posted_after.isoformat() if posted_after else None, sort,
+        posted_after.isoformat() if posted_after else None, sort, distance_km,
     )
     cached = _search_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
@@ -609,6 +674,8 @@ async def search_jobs(
         base["max_days_old"] = max_days_old
     if sort == "date":
         base["sort_by"] = "date"
+    if distance_km is not None:
+        base["distance"] = distance_km
     targets: list[str | None] = list(places) or [None]
 
     async def fetch(client: httpx.AsyncClient, place: str | None, page: int,
@@ -681,6 +748,19 @@ async def search_jobs(
                 result.also_searched.append(variant)
                 extra_total += found
 
+        # Nothing has every word of a long, specific title: search the job
+        # inside it instead, and say so.
+        if strategy == "title" and sum(counts.values()) + extra_total == 0:
+            for core in core_titles(query):
+                outcomes = await asyncio.gather(
+                    *(fetch(client, t, 1, title=core) for t in pages), return_exceptions=True)
+                for target, outcome in zip(list(pages), outcomes):
+                    if isinstance(outcome, BaseException):
+                        continue
+                    pages[target].extend(outcome.get("results", []))
+                    extra_total += outcome.get("count") or 0
+                result.broadened_to.append(core)
+
         # Filters that discard most adverts get another page or two, but only
         # while places still have more to give.
         filtering = (salary_min is not None or require_stated_salary or remote_only
@@ -726,6 +806,7 @@ async def search_jobs(
     result.excluded_type_unstated = out.excluded_type_unstated
     result.excluded_other_type = out.excluded_other_type
     result.excluded_too_old = out.excluded_too_old
+    result.hidden = out.hidden
 
     # Title matches ran short: say what else merely mentions the words, apart.
     if strategy == "title" and len(result.postings) < limit:

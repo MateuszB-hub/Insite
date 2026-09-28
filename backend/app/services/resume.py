@@ -303,10 +303,18 @@ def check(extracted: dict, text: str, today: date | None = None) -> dict:
         dropped["summary"] = 1
         summary = ""
 
+    years = years_of_experience(jobs, today)
+    summary_source = "suggested"
+    if not summary and recent:
+        # Mentor: cleared the model's summary and re-uploaded -- and got
+        # nothing, as the new one was dropped too. Say what's certain instead.
+        summary = recent["title"] + (f" with {years} years of experience." if years else ".")
+        summary_source = "written from your job titles and dates"
+
     fields = {
         "current_role": recent["title"] if recent else None,
         "location": location or None,
-        "years_experience": years_of_experience(jobs, today),
+        "years_experience": years,
         "industry": industry or None,
         "summary": summary or None,
         "skills": skills,
@@ -316,7 +324,7 @@ def check(extracted: dict, text: str, today: date | None = None) -> dict:
     sources = {
         "current_role": "résumé", "location": "résumé", "skills": "résumé",
         "certifications": "résumé", "years_experience": "calculated from your job dates",
-        "industry": "suggested", "summary": "suggested",
+        "industry": "suggested", "summary": summary_source,
     }
     return {
         "fields": fields,

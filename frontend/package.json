@@ -16,7 +16,8 @@
     "demo:mentor": "node e2e/mentor-demo.mjs",
     "demo:resume": "node e2e/resume-demo.mjs",
     "demo:dates": "node e2e/dates-demo.mjs",
-    "demo:places": "node e2e/places-demo.mjs"
+    "demo:places": "node e2e/places-demo.mjs",
+    "demo:round3": "node e2e/round3-demo.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.510.0",
