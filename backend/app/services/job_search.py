@@ -150,6 +150,10 @@ class JobPosting:
     duplicate_count: int = 1
     #: The other places the same advert appeared.
     duplicate_locations: list[str] = field(default_factory=list)
+    #: The board estimates each copy separately, and they disagree (mentor:
+    #: one SmartLight advert at $132,154 and $194,255): the spread, if any.
+    estimate_low: float | None = None
+    estimate_high: float | None = None
     #: When WE first saw this advert text, regardless of its claimed date.
     first_seen: str | None = None
     #: True when we have seen this advert materially earlier than it claims.
@@ -169,6 +173,7 @@ class JobPosting:
             "fingerprint": self.fingerprint,
             "duplicate_count": self.duplicate_count,
             "duplicate_locations": self.duplicate_locations,
+            "estimate_low": self.estimate_low, "estimate_high": self.estimate_high,
             "first_seen": self.first_seen,
             "is_repost": self.is_repost,
         }
@@ -355,23 +360,40 @@ def _collapse_duplicates(postings: list[JobPosting]) -> tuple[list[JobPosting], 
 
     A page showing the same advert in ten states is ten rows of one job. The
     survivor records where else it appeared so nothing is hidden.
+
+    The row shown is always one real advert -- its link, date, place and pay
+    from the same copy -- so what opens matches what was shown. A copy that
+    states its pay is preferred, whole. When the board's estimates for the
+    copies disagree, the spread is kept so the page can say so.
     """
     seen: dict[str, JobPosting] = {}
+    estimates: dict[str, list[float]] = {}
     collapsed = 0
     for posting in postings:
-        first = seen.get(posting.fingerprint)
+        fp = posting.fingerprint
+        if posting.salary_source is SalarySource.estimated and (posting.salary_max or posting.salary_min):
+            estimates.setdefault(fp, []).append(posting.salary_max or posting.salary_min)
+        first = seen.get(fp)
         if first is None:
-            seen[posting.fingerprint] = posting
+            seen[fp] = posting
             continue
-        first.duplicate_count += 1
-        if posting.location and posting.location not in first.duplicate_locations:
-            first.duplicate_locations.append(posting.location)
-        # Prefer a stated salary over an estimate when merging.
+        collapsed += 1
         if (first.salary_source is not SalarySource.stated
                 and posting.salary_source is SalarySource.stated):
-            first.salary_min, first.salary_max = posting.salary_min, posting.salary_max
-            first.salary_source = SalarySource.stated
-        collapsed += 1
+            posting.duplicate_count = first.duplicate_count + 1
+            posting.duplicate_locations = [
+                place for place in dict.fromkeys([first.location, *first.duplicate_locations])
+                if place and place != posting.location]
+            seen[fp] = posting
+            continue
+        first.duplicate_count += 1
+        if (posting.location and posting.location != first.location
+                and posting.location not in first.duplicate_locations):
+            first.duplicate_locations.append(posting.location)
+    for fp, kept in seen.items():
+        values = estimates.get(fp, [])
+        if kept.salary_source is SalarySource.estimated and values and max(values) - min(values) >= 1:
+            kept.estimate_low, kept.estimate_high = min(values), max(values)
     return list(seen.values()), collapsed
 
 

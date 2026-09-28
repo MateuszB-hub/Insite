@@ -564,6 +564,9 @@ export type SalarySource = 'stated' | 'estimated' | 'absent'
 export type RemoteClaim = 'remote' | 'conflicted' | 'onsite' | 'unknown'
 
 export interface JobPosting {
+  /** Copies of this advert got different board estimates: lowest and highest. */
+  estimate_low?: number | null
+  estimate_high?: number | null
   /** Only on hidden adverts: which filter removed it. */
   hidden_reason?: string | null
   id: string

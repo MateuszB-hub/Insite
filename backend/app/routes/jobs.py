@@ -34,6 +34,9 @@ class JobOut(BaseModel):
     salary_max: float | None = None
     #: "stated" (employer said so) | "estimated" (aggregator guessed) | "absent"
     salary_source: str
+    #: Copies of this advert got different board estimates: lowest and highest.
+    estimate_low: float | None = None
+    estimate_high: float | None = None
     #: Only in `hidden`: which filter removed it, in plain words.
     hidden_reason: str | None = None
     #: "remote" | "conflicted" | "onsite" | "unknown"
