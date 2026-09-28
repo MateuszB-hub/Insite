@@ -28,6 +28,11 @@ export function SalaryLine({ job }: { job: JobPosting }) {
       >
         <TriangleAlert className="w-3.5 h-3.5" />
         {range} <span className="text-xs">(estimated, not from employer)</span>
+        {job.estimate_low != null && job.estimate_high != null && (
+          <span className="text-xs text-amber-800" data-testid="estimate-spread">
+            · the board estimated {money(job.estimate_low)}–{money(job.estimate_high)} for copies of this same advert
+          </span>
+        )}
       </span>
     )
   }

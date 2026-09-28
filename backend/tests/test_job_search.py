@@ -611,3 +611,40 @@ def test_distance_is_sent_to_the_board_in_km(monkeypatch):
     _fake_adzuna(monkeypatch, {"Austin, TX": [posting()]}, requests=requests)
     asyncio.run(job_search.search_jobs("engineer", ["Austin, TX"], distance_km=40))
     assert requests[0]["distance"] == "40"
+
+
+# --- copies of one advert: what's shown is one real advert ------------------
+
+def test_the_copy_that_states_its_pay_is_shown_whole():
+    # Its link, date and place, not just its salary: what opens must match.
+    from app.services.job_search import SalarySource
+    postings = [
+        _p("aaa", "Austin", 90000, SalarySource.estimated),
+        _p("aaa", "Denver", 120000, SalarySource.stated),
+    ]
+    collapsed, _ = _collapse_duplicates(postings)
+    shown = collapsed[0]
+    assert (shown.id, shown.location, shown.salary_min) == ("Denver", "Denver", 120000)
+    assert shown.duplicate_count == 2 and shown.duplicate_locations == ["Austin"]
+
+
+def test_disagreeing_board_estimates_for_copies_are_reported():
+    # Mentor: one SmartLight advert, estimated $132,154 on one copy and
+    # $194,255 on another.
+    from app.services.job_search import SalarySource
+    postings = [
+        _p("aaa", "Plano", 132154, SalarySource.estimated),
+        _p("aaa", "Plano", 194255, SalarySource.estimated),
+        _p("aaa", "Prestonwood", 150000, SalarySource.estimated),
+    ]
+    collapsed, _ = _collapse_duplicates(postings)
+    shown = collapsed[0]
+    assert shown.salary_min == 132154   # the copy that's linked
+    assert (shown.estimate_low, shown.estimate_high) == (132154, 194255)
+
+
+def test_an_advert_is_not_also_in_its_own_city():
+    # "also in Plano" on a Plano job said nothing.
+    collapsed, _ = _collapse_duplicates([_p("aaa", "Plano"), _p("aaa", "Plano"), _p("aaa", "Frisco")])
+    assert collapsed[0].duplicate_locations == ["Frisco"]
+    assert collapsed[0].duplicate_count == 3
