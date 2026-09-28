@@ -177,3 +177,29 @@ def test_a_slow_model_gives_a_plain_message(monkeypatch):
     monkeypatch.setattr(resume, "MODEL_TIMEOUT_S", 0.05)
     with pytest.raises(resume.ResumeError, match="taking too long"):
         asyncio.run(resume.suggest_profile(make_pdf(NURSE)))
+
+
+def test_summary_with_a_role_the_resume_does_not_hold_is_dropped():
+    # Live, a project manager's summary came back "Registered nurse with…":
+    # the model copied an example out of its own instructions.
+    wrong = resume.check({**EXTRACTED, "summary": "Software engineer with experience in triage."},
+                         TEXT, TODAY)
+    assert wrong["fields"]["summary"] is None
+    assert wrong["dropped"]["summary"] == 1
+    right = resume.check({**EXTRACTED, "summary": "Experienced registered nurse with triage work."},
+                         TEXT, TODAY)
+    assert right["fields"]["summary"] == "Experienced registered nurse with triage work."
+
+
+def test_the_prompt_carries_no_example_role():
+    # Any concrete role in the instructions can leak into someone's profile.
+    prompt = resume.build_prompt("text").split("=== RÉSUMÉ START ===")[0].lower()
+    assert "nurse" not in prompt
+
+
+def test_dates_written_out_in_full_fit_the_schema():
+    # A 10-character cap cut "August 2020" to "August 202", and that job
+    # dropped out of the years count.
+    job = resume.SCHEMA["properties"]["jobs"]["items"]["properties"]
+    for key in ("start", "end"):
+        assert job[key]["maxLength"] >= len("September 2020")

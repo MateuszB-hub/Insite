@@ -121,8 +121,8 @@ SCHEMA: dict[str, Any] = {
                 "properties": {
                     "title": _TEXT,
                     "employer": _TEXT,
-                    "start": {"type": "string", "maxLength": 10, "description": "YYYY-MM or YYYY"},
-                    "end": {"type": "string", "maxLength": 10, "description": "YYYY-MM, YYYY or present"},
+                    "start": {"type": "string", "maxLength": 24, "description": "YYYY-MM or YYYY"},
+                    "end": {"type": "string", "maxLength": 24, "description": "YYYY-MM, YYYY or present"},
                 },
                 "required": ["title", "start", "end"],
             },
@@ -151,8 +151,8 @@ def build_prompt(text: str) -> str:
         "- certifications: certifications and licences, copied as written.\n"
         "- industry: one or two words for the industry of their recent work.\n"
         "- summary: one or two plain sentences describing their experience, "
-        "starting with their role (e.g. \"Registered nurse with experience in "
-        "...\"). Never use their name and never use he, she, his, her or they. "
+        "starting with their most recent job title exactly as written in the "
+        "résumé, then \"with experience in\" and what they have done. Never use their name and never use he, she, his, her or they. "
         "No praise, no claims not in the résumé.\n"
         "- Leave out anything that isn't in the résumé. Never invent.\n\n"
         "=== RÉSUMÉ START ===\n"
@@ -293,6 +293,13 @@ def check(extracted: dict, text: str, today: date | None = None) -> dict:
     # A pronoun is the model guessing gender from a name; misgendering
     # someone in their own profile is worse than leaving the summary blank.
     if _GENDERED.search(summary):
+        dropped["summary"] = 1
+        summary = ""
+    # The summary opens with the person's role, and it must be a role the
+    # résumé holds: a small model copied the prompt's own example
+    # ("Registered nurse with…") into a project manager's profile.
+    opening = _norm(summary)[:80]
+    if summary and not any(_norm(job["title"]) in opening for job in jobs):
         dropped["summary"] = 1
         summary = ""
 
