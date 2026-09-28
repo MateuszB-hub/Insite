@@ -138,6 +138,9 @@ async def job_search(
     # "relevance" (the board's order) or "date" (newest first).
     sort: str = Query("relevance"),
     distance: int | None = Query(None),
+    #: Words the whole advert must contain ("software"), for titles that mean
+    #: different work in different fields ("QA lead").
+    mention: str | None = Query(None, max_length=60),
     limit: int = Query(30, ge=1, le=50),
 ):
     """Search postings, keeping every provenance signal intact.
@@ -198,6 +201,7 @@ async def job_search(
             posted_after=posted_after,
             sort=sort,
             distance_km=round(distance * 1.609) if distance else None,
+            must_mention=mention,
             limit=limit,
         )
     except RuntimeError as exc:

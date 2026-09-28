@@ -648,3 +648,27 @@ def test_an_advert_is_not_also_in_its_own_city():
     collapsed, _ = _collapse_duplicates([_p("aaa", "Plano"), _p("aaa", "Plano"), _p("aaa", "Frisco")])
     assert collapsed[0].duplicate_locations == ["Frisco"]
     assert collapsed[0].duplicate_count == 3
+
+
+# --- "Must also mention": titles that mean different work in different fields --
+
+def test_mention_words_are_cleaned_and_capped():
+    assert job_search.mention_words(" Software, TESTING ") == "software testing"
+    assert job_search.mention_words("c++ c# a b c d") == "c++ c# a b c"
+    assert job_search.mention_words(None) == ""
+
+
+def test_the_board_requires_the_words_across_the_whole_advert(monkeypatch):
+    # We only get a snippet of each advert; the board checks all of it.
+    requests = []
+    _fake_adzuna(monkeypatch, {None: [posting()]}, requests=requests)
+    asyncio.run(job_search.search_jobs("qa lead", [], must_mention="Software"))
+    assert requests[0]["what_and"] == "software"
+    assert requests[0]["title_only"] == "qa lead"
+
+
+def test_no_mention_sends_nothing_extra(monkeypatch):
+    requests = []
+    _fake_adzuna(monkeypatch, {None: [posting()]}, requests=requests)
+    asyncio.run(job_search.search_jobs("qa lead", [], must_mention="  "))
+    assert "what_and" not in requests[0]

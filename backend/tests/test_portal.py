@@ -568,3 +568,18 @@ def test_hidden_adverts_are_returned_with_their_reason(applicant, monkeypatch):
 
     body = applicant.get("/api/jobs/search?q=qa%20lead").json()
     assert [(h["title"], h["hidden_reason"]) for h in body["hidden"]] == [("QA Lead", "No pay stated")]
+
+
+def test_must_mention_is_passed_through_and_bounded(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import SearchResult
+    seen = {}
+
+    async def fake_search(q, places, **kwargs):
+        seen["must_mention"] = kwargs["must_mention"]
+        return SearchResult(locations_searched=places)
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    assert applicant.get("/api/jobs/search?q=qa%20lead&mention=software").status_code == 200
+    assert seen["must_mention"] == "software"
+    assert applicant.get(f"/api/jobs/search?q=qa%20lead&mention={'x' * 61}").status_code == 422

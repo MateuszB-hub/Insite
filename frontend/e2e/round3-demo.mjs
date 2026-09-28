@@ -58,8 +58,22 @@ check('hidden jobs can be shown, each with its reason',
   reasons.length > 0 && reasons.every((r) => r.startsWith('Hidden: ')), reasons.slice(0, 2).join(' | '))
 await page.screenshot({ path: `${OUT}/2-hidden.png`, fullPage: false })
 
-// Radius: enabled once a place is typed, and sent with the search.
+// A title that means different work in different fields: narrow by what
+// the advert says.
 await page.getByLabel('Only employer-stated salaries').uncheck()
+await page.fill('#mention', 'software')
+const [withMention] = await Promise.all([
+  page.waitForRequest((r) => r.url().includes('/api/jobs/search')),
+  page.getByRole('button', { name: 'Search' }).click(),
+])
+await page.waitForResponse((r) => r.url().includes('/api/jobs/search'), { timeout: 90000 })
+await page.waitForTimeout(400)
+check('"must also mention" goes with the search', new URL(withMention.url()).searchParams.get('mention') === 'software')
+const matchNote = await page.getByTestId('match-note').innerText().catch(() => '')
+check('…and the page says so', /"software" anywhere in the advert/.test(matchNote), matchNote)
+await page.fill('#mention', '')
+
+// Radius: enabled once a place is typed, and sent with the search.
 await page.fill('#where', 'Austin, TX')
 await page.keyboard.press('Escape')
 await page.press('#where', 'Enter')

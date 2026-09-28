@@ -677,6 +677,8 @@ export async function searchJobs(params: {
   sort?: 'relevance' | 'date'
   /** Miles around each place (5, 10, 25 or 50). */
   distance?: number
+  /** Words the whole advert must contain, e.g. "software". */
+  mention?: string
   jobType?: JobType
   signal?: AbortSignal
 }): Promise<JobSearchResponse> {
@@ -690,6 +692,7 @@ export async function searchJobs(params: {
   if (params.jobType) qs.set('job_type', params.jobType)
   if (params.postedAfter) qs.set('posted_after', params.postedAfter)
   if (params.distance) qs.set('distance', String(params.distance))
+  if (params.mention?.trim()) qs.set('mention', params.mention.trim())
   if (params.sort && params.sort !== 'relevance') qs.set('sort', params.sort)
 
   const res = await apiFetch(`/api/jobs/search?${qs}`, { ...withCreds, signal: params.signal })

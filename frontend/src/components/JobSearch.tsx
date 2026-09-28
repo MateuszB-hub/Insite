@@ -166,6 +166,9 @@ export default function JobSearch() {
   // The board's own radius is ~5 miles (measured: Austin nurses 662 at its
   // default, 919 at 25 miles); 25 is what job sites usually start with.
   const [distance, setDistance] = useState(25)
+  // Titles that mean different work in different fields ("QA lead": software
+  // testing, or food and factory inspection) are narrowed by what the advert says.
+  const [mention, setMention] = useState('')
   const [showHidden, setShowHidden] = useState(false)
   const [requireStated, setRequireStated] = useState(false)
   const [remoteOnly, setRemoteOnly] = useState(false)
@@ -293,6 +296,7 @@ export default function JobSearch() {
         postedAfter: postedAfter(when.posted, when.since),
         sort: when.sort,
         distance: where.length ? distance : undefined,
+        mention: mention || undefined,
         requireStatedSalary: requireStated,
         remoteOnly,
         includeConflictedRemote: includeConflicted,
@@ -582,6 +586,12 @@ export default function JobSearch() {
             </label>
           )}
           <label className="flex items-center gap-2 text-sm text-slate-700">
+            Must also mention
+            <input id="mention" value={mention} onChange={(e) => setMention(e.target.value)}
+              maxLength={60} placeholder="e.g. software"
+              className="w-36 rounded-lg border border-slate-300 text-sm py-1 px-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             Within
             <select id="distance" value={distance} onChange={(e) => setDistance(Number(e.target.value))}
               disabled={!places.length && !placeDraft.trim()}
@@ -679,7 +689,8 @@ export default function JobSearch() {
               Jobs with {multiWord ? <>every word of "{q.trim()}"</> : <>"{q.trim()}"</>} in the job title
               {data.also_searched && data.also_searched.length > 0 && (
                 <>, also written {data.also_searched.map((v) => `"${v}"`).join(' or ')}</>
-              )}.
+              )}
+              {mention.trim() && <>, and "{mention.trim()}" anywhere in the advert</>}.
             </p>
           )}
 
