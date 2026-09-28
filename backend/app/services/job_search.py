@@ -419,6 +419,11 @@ _LEVEL_WORDS = {"vp", "svp", "evp", "avp", "vice", "president", "senior", "sr", 
 _JOINERS = re.compile(r"\s*(?:&|/|\band\b)\s*")
 
 
+def mention_words(text: str | None) -> str:
+    """'Software, testing' -> 'software testing': words every advert must contain."""
+    return " ".join(re.findall(r"[a-z0-9+#]+", (text or "").lower())[:5])
+
+
 def core_titles(query: str, limit: int = 2) -> list[str]:
     """The job inside a long, specific title, for when nothing has it all.
 
@@ -637,6 +642,7 @@ async def search_jobs(
     posted_after: datetime | None = None,
     sort: str = "relevance",
     distance_km: int | None = None,
+    must_mention: str | None = None,
 ) -> SearchResult:
     """Search postings and apply filters that never fabricate certainty.
 
@@ -670,6 +676,7 @@ async def search_jobs(
         require_stated_salary, remote_only, include_conflicted_remote,
         collapse_duplicates, max_days_old, job_type, limit, strategy,
         posted_after.isoformat() if posted_after else None, sort, distance_km,
+        mention_words(must_mention),
     )
     cached = _search_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
@@ -698,6 +705,11 @@ async def search_jobs(
         base["sort_by"] = "date"
     if distance_km is not None:
         base["distance"] = distance_km
+    if mention_words(must_mention):
+        # Mentor: "qa lead" brought in food and manufacturing QA -- same title,
+        # other work, nothing in the title to tell them apart. The board checks
+        # the whole advert (we only get a snippet), so it does the requiring.
+        base["what_and"] = mention_words(must_mention)
     targets: list[str | None] = list(places) or [None]
 
     async def fetch(client: httpx.AsyncClient, place: str | None, page: int,
