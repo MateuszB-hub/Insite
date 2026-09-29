@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import {
   Search, Loader2, MapPin, Building2, ExternalLink,
@@ -20,7 +20,7 @@ import {
   type JobType,
   type PlaceCheck,
 } from '../lib/api'
-import { PostedAgo, SalaryLine } from './JobBits'
+import { LivingCostLine, PostedAgo, SalaryLine } from './JobBits'
 
 //: Like the big job sites. Values are days ('' = any time), plus a custom
 //: "posted on or after" date. Default a week: testers found older adverts are
@@ -397,7 +397,7 @@ export default function JobSearch() {
           )}
         </div>
 
-        <div className="mt-3"><SalaryLine job={job} /></div>
+        <div className="mt-3"><SalaryLine job={job} /><LivingCostLine job={job} /></div>
 
         {job.duplicate_count > 1 && (
           <p className="mt-2 text-xs text-slate-500 flex items-start gap-1.5">
@@ -674,6 +674,13 @@ export default function JobSearch() {
                 for the other{data.locations_searched.length - data.failed_locations.length === 1 ? '' : 's'}.
               </p>
             </div>
+          )}
+
+          {!data.home_area && data.postings.some((p) => p.salary_min || p.salary_max) && (
+            <p className="text-sm text-slate-500 mb-3" data-testid="living-cost-hint">
+              Add your city to your <Link to="/profile" className="text-indigo-700 underline">profile</Link>{' '}
+              to see what each salary is worth where you live.
+            </p>
           )}
 
           {(data.broadened_to?.length ?? 0) > 0 && (

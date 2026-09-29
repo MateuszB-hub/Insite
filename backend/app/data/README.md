@@ -32,3 +32,10 @@ key). Locations are checked against these before a job search, so the board
 never has to guess. Population only ranks places that share a name; where
 the 2023 estimates skip a place (census-designated places, Puerto Rico), its
 2010 census count stands in.
+
+`col.json`: living-cost indexes (BEA Regional Price Parities: all items and
+housing, US average = 100) for each state and metro area, with each metro
+county and city mapped to its metro. Written by `python -m app.scripts.vendor_col`
+(public files, no key). A city's metro comes from its county, via the ZIP-area
+relationship files. Used to show pay in the person's home terms. Re-run each
+year when the BEA publishes new parities.

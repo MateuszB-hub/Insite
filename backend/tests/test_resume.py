@@ -95,7 +95,8 @@ def test_overlapping_jobs_count_once():
 
 def test_invented_location_is_dropped():
     got = resume.check({**EXTRACTED, "location": "Denver, CO"}, TEXT, TODAY)
-    assert got["fields"]["location"] is None
+    # The made-up one is dropped; the real one is read from the contact line.
+    assert got["fields"]["location"] == "Omaha, NE"
     assert got["dropped"]["location"] == 1
 
 
@@ -204,3 +205,21 @@ def test_dates_written_out_in_full_fit_the_schema():
     job = resume.SCHEMA["properties"]["jobs"]["items"]["properties"]
     for key in ("start", "end"):
         assert job[key]["maxLength"] >= len("September 2020")
+
+
+@pytest.mark.parametrize("text, found", [
+    ("Jane Doe\njane@example.com | (555) 123-4567 | Plano, TX 75024", "Plano, TX"),
+    ("JOHN SMITH\nSenior Engineer · Austin, Texas", "Austin, TX"),
+    ("Pat Kim\nSan José, CA", "San Jose, CA"),
+    ("Chris Park\nRemote, US", None),
+    ("Sam\nsam@example.com", None),
+])
+def test_location_is_read_from_the_contact_lines_by_rule(text, found):
+    # Mentor: "the pdf gives the location" -- the model had missed it.
+    assert resume.location_in_text(text) == found
+
+
+def test_a_rule_found_location_beats_a_missing_model_one():
+    got = resume.check({**EXTRACTED, "location": ""}, "Dana Lee\nOmaha, NE\n" + TEXT, TODAY)
+    assert got["fields"]["location"] == "Omaha, NE"
+    assert got["sources"]["location"] == "résumé"

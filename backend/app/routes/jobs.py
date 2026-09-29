@@ -8,7 +8,10 @@ from pydantic import BaseModel, Field
 
 from app.auth.deps import CurrentUser
 from app.services import places as place_check
-from app.services.job_search import JOB_TYPES, MAX_LOCATIONS, SORTS, normalize_locations, search_jobs
+from app.services.job_search import (
+    JOB_TYPES, MAX_LOCATIONS, SORTS, RemoteClaim, normalize_locations, search_jobs,
+)
+from app.services.labor import living_costs
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,6 +20,21 @@ router = APIRouter()
 #: Radius around each place, in miles (the board takes km). Mentor: "for
 #: city you might also consider a distance range."
 DISTANCES_MILES = (5, 10, 25, 50)
+
+
+class LivingCost(BaseModel):
+    """This job's pay in the person's home terms (BEA price parities)."""
+    equivalent_min: float
+    equivalent_max: float
+    #: Living costs in the job's area vs home: +12 means 12% higher there.
+    difference_pct: int
+    housing_difference_pct: int | None = None
+    job_area: str
+    #: "metro" or "state": a state is an average, and the page says so.
+    job_level: str
+    home_area: str
+    home_level: str
+    source: str
 
 
 class JobOut(BaseModel):
@@ -37,6 +55,8 @@ class JobOut(BaseModel):
     #: Copies of this advert got different board estimates: lowest and highest.
     estimate_low: float | None = None
     estimate_high: float | None = None
+    #: What the pay is worth where the person lives, when that differs.
+    living_cost: LivingCost | None = None
     #: Only in `hidden`: which filter removed it, in plain words.
     hidden_reason: str | None = None
     #: "remote" | "conflicted" | "onsite" | "unknown"
@@ -112,6 +132,9 @@ class JobSearchResponse(BaseModel):
     #: Nothing had every word of the title, so these were searched instead
     #: ("compliance specialist" for "VP EAC Compliance … Specialist").
     broadened_to: list[str] = []
+    #: Where pay is compared to: the profile's location, understood ("Dallas").
+    #: None when the profile has no usable location.
+    home_area: str | None = None
     #: What the filters removed, each with `hidden_reason`, to show on request.
     hidden: list[JobOut] = []
 
@@ -210,12 +233,24 @@ async def job_search(
         logger.exception("job search failed")
         raise HTTPException(502, "Job search is unavailable right now.")
 
+    # What each job's pay is worth where the person lives (their profile's
+    # location). A remote job has no area of its own to compare.
+    home = living_costs.area_for_place(user.profile.location if user.profile else None)
+
+    def out(posting, **extra) -> JobOut:
+        comparison = None
+        if home and posting.remote_claim is not RemoteClaim.remote:
+            comparison = living_costs.compare(posting.salary_min, posting.salary_max,
+                                              living_costs.area_for_posting(posting.area), home)
+        return JobOut(**posting.to_dict(), living_cost=comparison, **extra)
+
     return JobSearchResponse(
         place_checks=place_checks,
         places_not_searched=places_not_searched,
         remote_from_place=remote_from_place,
-        postings=[JobOut(**p.to_dict()) for p in result.postings],
-        estimated_matches=[JobOut(**p.to_dict()) for p in result.estimated_matches],
+        home_area=home.short if home else None,
+        postings=[out(p) for p in result.postings],
+        estimated_matches=[out(p) for p in result.estimated_matches],
         pages_fetched=result.pages_fetched,
         total_available=result.total_available,
         excluded_estimated_salary=result.excluded_estimated_salary,
@@ -228,10 +263,10 @@ async def job_search(
         excluded_type_unstated=result.excluded_type_unstated,
         excluded_other_type=result.excluded_other_type,
         match=result.match,
-        loose_matches=[JobOut(**p.to_dict()) for p in result.loose_matches],
+        loose_matches=[out(p) for p in result.loose_matches],
         also_searched=result.also_searched,
         broadened_to=result.broadened_to,
-        hidden=[JobOut(**p.to_dict(), hidden_reason=reason) for p, reason in result.hidden],
+        hidden=[out(p, hidden_reason=reason) for p, reason in result.hidden],
         excluded_too_old=result.excluded_too_old,
     )
 
