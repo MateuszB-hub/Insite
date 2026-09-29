@@ -583,3 +583,34 @@ def test_must_mention_is_passed_through_and_bounded(applicant, monkeypatch):
     assert applicant.get("/api/jobs/search?q=qa%20lead&mention=software").status_code == 200
     assert seen["must_mention"] == "software"
     assert applicant.get(f"/api/jobs/search?q=qa%20lead&mention={'x' * 61}").status_code == 422
+
+
+def test_pay_is_compared_with_the_profiles_city(applicant, monkeypatch):
+    from app.routes import jobs
+    from app.services.job_search import JobPosting, RemoteClaim, SalarySource, SearchResult
+
+    def job(id, area, remote=RemoteClaim.unknown):
+        return JobPosting(id=id, title="QA Engineer", company="Acme", location=area[-1], url="https://x",
+                          fingerprint=id, salary_min=120000, salary_source=SalarySource.stated,
+                          area=area, remote_claim=remote)
+
+    async def fake_search(q, places, **kwargs):
+        return SearchResult(locations_searched=places, postings=[
+            job("sf", ["US", "California", "San Francisco County", "San Francisco"]),
+            job("near", ["US", "Texas", "Dallas", "Richardson"]),
+            job("remote", ["US", "California", "San Francisco County", "San Francisco"], RemoteClaim.remote),
+        ])
+    monkeypatch.setattr(jobs, "search_jobs", fake_search)
+
+    # No home city yet: nothing compared, and the page can say how to get it.
+    body = applicant.get("/api/jobs/search?q=qa").json()
+    assert body["home_area"] is None
+    assert all(p["living_cost"] is None for p in body["postings"])
+
+    applicant.put("/api/me/profile", json={"location": "Plano, TX"})
+    body = applicant.get("/api/jobs/search?q=qa").json()
+    assert body["home_area"] == "Dallas"
+    by_id = {p["id"]: p["living_cost"] for p in body["postings"]}
+    assert by_id["sf"]["equivalent_min"] == 107000 and by_id["sf"]["job_area"] == "San Francisco"
+    assert by_id["near"] is None        # the same metro as home
+    assert by_id["remote"] is None      # a remote job has no area of its own

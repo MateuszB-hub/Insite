@@ -32,6 +32,7 @@ from typing import Any
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
+from app.services import places
 from app.services.providers import get_provider
 from app.services.providers.base import ProviderError
 
@@ -258,6 +259,32 @@ def _most_recent(jobs: list[dict], today: date) -> dict | None:
     return max(jobs, key=key) if jobs else None
 
 
+#: "Plano, TX", "Austin, Texas 78701": a place in the contact lines.
+_CITY_STATE = re.compile(r"([^\W\d_][\w.' -]{1,50}?),\s*([A-Z]{2}|[A-Z][a-z]+(?: [A-Z][a-z]+)?)\b")
+#: The contact block. Further down, places are where jobs were, not home.
+CONTACT_LINES = 12
+
+
+def location_in_text(text: str) -> str | None:
+    """Where the person is, read from the top of the résumé by rule.
+
+    The model missed a location plainly on the page (mentor: "the pdf gives
+    the location"). A "City, ST" in the contact lines, checked against the
+    Census place list, is certain; the last one to three words before the
+    comma are tried, so "Senior Engineer · Plano, TX" still finds Plano.
+    """
+    for line in text.splitlines()[:CONTACT_LINES]:
+        for match in _CITY_STATE.finditer(line):
+            words = match.group(1).split()
+            for n in (3, 2, 1):
+                if len(words) < n:
+                    continue
+                found = places.resolve(f"{' '.join(words[-n:])}, {match.group(2)}")
+                if found.status == "ok" and found.place and not found.note:
+                    return found.place
+    return None
+
+
 def check(extracted: dict, text: str, today: date | None = None) -> dict:
     """Keep only what the résumé says; calculate what can be calculated."""
     today = today or date.today()
@@ -286,6 +313,8 @@ def check(extracted: dict, text: str, today: date | None = None) -> dict:
     if location and not _in_text(location, haystack):
         dropped["location"] = 1
         location = ""
+    # By rule first: a checked "City, ST" from the contact lines beats the model's.
+    location = location_in_text(text) or location
 
     recent = _most_recent(jobs, today)
     industry = " ".join(str(extracted.get("industry") or "").split())[:200]

@@ -44,6 +44,32 @@ export function SalaryLine({ job }: { job: JobPosting }) {
   )
 }
 
+/**
+ * What the pay is worth where the person lives. Mentor: "100k is basically
+ * 70k here." An average of all living costs, from official data; housing
+ * is most of it, and taxes aren't in it -- both said on hover.
+ */
+export function LivingCostLine({ job }: { job: JobPosting }) {
+  const c = job.living_cost
+  if (!c) return null
+  const worth = c.equivalent_min === c.equivalent_max
+    ? money(c.equivalent_min)
+    : `${money(c.equivalent_min)}–${money(c.equivalent_max)}`
+  const there = c.job_level === 'state' ? `${c.job_area} on average` : c.job_area
+  const direction = c.difference_pct > 0 ? 'higher' : 'lower'
+  const housing = c.housing_difference_pct != null && Math.abs(c.housing_difference_pct) >= 5
+    ? `; housing ${Math.abs(c.housing_difference_pct)}% ${c.housing_difference_pct > 0 ? 'higher' : 'lower'}`
+    : ''
+  return (
+    <p className="text-xs text-slate-600 mt-1" data-testid="living-cost"
+      title={`${c.source}. An average of all living costs; taxes aren't included. `
+        + `Your area: ${c.home_area}${c.home_level === 'state' ? ' (state average)' : ''}.`}>
+      ≈ <span className="font-medium text-slate-800">{worth} in {c.home_area} terms</span>
+      {' '}· living costs {Math.abs(c.difference_pct)}% {direction} in {there}{housing}
+    </p>
+  )
+}
+
 /** How old the advert says it is. Past a week it is often already filled. */
 export function PostedAgo({ created }: { created?: string | null }) {
   if (!created) return null

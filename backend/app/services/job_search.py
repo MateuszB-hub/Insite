@@ -154,6 +154,9 @@ class JobPosting:
     #: one SmartLight advert at $132,154 and $194,255): the spread, if any.
     estimate_low: float | None = None
     estimate_high: float | None = None
+    #: The board's place breakdown, e.g. ["US", "Texas", "Collin County", "Plano"],
+    #: for living-cost comparisons.
+    area: list[str] = field(default_factory=list)
     #: When WE first saw this advert text, regardless of its claimed date.
     first_seen: str | None = None
     #: True when we have seen this advert materially earlier than it claims.
@@ -290,6 +293,7 @@ def to_posting(raw: dict[str, Any]) -> JobPosting:
         title=raw.get("title", "") or "",
         company=(raw.get("company") or {}).get("display_name"),
         location=(raw.get("location") or {}).get("display_name"),
+        area=[str(a) for a in (raw.get("location") or {}).get("area") or []],
         url=raw.get("redirect_url", "") or "",
         created=raw.get("created"),
         description=(raw.get("description") or "")[:600],

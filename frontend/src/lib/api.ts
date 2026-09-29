@@ -563,7 +563,24 @@ export async function resetPassword(token: string, newPassword: string): Promise
 export type SalarySource = 'stated' | 'estimated' | 'absent'
 export type RemoteClaim = 'remote' | 'conflicted' | 'onsite' | 'unknown'
 
+/** This job's pay in the person's home terms (BEA Regional Price Parities). */
+export interface LivingCost {
+  equivalent_min: number
+  equivalent_max: number
+  /** Living costs in the job's area vs home: +12 means 12% higher there. */
+  difference_pct: number
+  housing_difference_pct?: number | null
+  job_area: string
+  /** "metro", or "state" (an average for the whole state). */
+  job_level: 'metro' | 'state'
+  home_area: string
+  home_level: 'metro' | 'state'
+  source: string
+}
+
 export interface JobPosting {
+  /** What the pay is worth where the person lives, when that differs. */
+  living_cost?: LivingCost | null
   /** Copies of this advert got different board estimates: lowest and highest. */
   estimate_low?: number | null
   estimate_high?: number | null
@@ -626,6 +643,8 @@ export interface JobSearchResponse {
   remote_from_place?: boolean
   /** Other spellings also searched, learned from O*NET ("RN" for "registered nurse"). */
   also_searched?: string[]
+  /** Where pay is compared to (the profile's location), or null if not set. */
+  home_area?: string | null
   /** Nothing had every word of the title, so these were searched instead. */
   broadened_to?: string[]
   /** What the filters removed, each with its `hidden_reason`. */
