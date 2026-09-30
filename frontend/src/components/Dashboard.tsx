@@ -90,7 +90,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Future of Work</h1>
         <p className="text-slate-500 mt-1">
@@ -108,7 +108,7 @@ export default function Dashboard() {
               Industry
             </label>
             <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 id="industry"
                 type="text"
@@ -122,7 +122,7 @@ export default function Dashboard() {
 
           <div className="flex-1">
             <label htmlFor="jobTitle" className="block text-sm font-medium text-slate-700 mb-1">
-              Job Title <span className="text-slate-400 font-normal">(optional)</span>
+              Job Title <span className="text-slate-500 font-normal">(optional)</span>
             </label>
             <input
               id="jobTitle"

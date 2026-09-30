@@ -12,13 +12,13 @@ export default function MoveFacts({ training, gaps = [], links = [] }: {
     <div className="mt-3 space-y-1.5 text-sm">
       {training && (
         <p className="flex items-start gap-1.5 text-slate-600">
-          <GraduationCap className="w-4 h-4 mt-0.5 shrink-0 text-slate-400" />
+          <GraduationCap className="w-4 h-4 mt-0.5 shrink-0 text-slate-500" />
           <span><span className="text-slate-500">Training:</span> {training}</span>
         </p>
       )}
       {gaps.length > 0 && (
         <p className="flex items-start gap-1.5 text-slate-600">
-          <Target className="w-4 h-4 mt-0.5 shrink-0 text-slate-400" />
+          <Target className="w-4 h-4 mt-0.5 shrink-0 text-slate-500" />
           <span>
             <span className="text-slate-500">Skills to build:</span>{' '}
             {gaps.map((g) => g.skill).join(', ')}
@@ -27,7 +27,7 @@ export default function MoveFacts({ training, gaps = [], links = [] }: {
       )}
       {links.length > 0 && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="learning-links">
-          <BookOpen className="w-4 h-4 shrink-0 text-slate-400" />
+          <BookOpen className="w-4 h-4 shrink-0 text-slate-500" />
           {links.map((l) => (
             <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer"
               title={l.source}

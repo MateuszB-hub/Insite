@@ -146,7 +146,7 @@ export default function CareerPathway() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Career Pathway</h1>
         <p className="text-slate-500 mt-1">
@@ -173,7 +173,7 @@ export default function CareerPathway() {
           </div>
           <div className="flex-1">
             <label htmlFor="ind" className="block text-sm font-medium text-slate-700 mb-1">
-              Industry <span className="text-slate-400 font-normal">(optional)</span>
+              Industry <span className="text-slate-500 font-normal">(optional)</span>
             </label>
             <input
               id="ind"
@@ -257,11 +257,11 @@ export default function CareerPathway() {
 
           {/* Starting point */}
           <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">Starting from</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Starting from</p>
             <h2 className="text-lg font-semibold text-slate-900">
               {result.current_occupation.title}
               {result.current_occupation.code && (
-                <span className="ml-2 text-xs font-mono text-slate-400">
+                <span className="ml-2 text-xs font-mono text-slate-500">
                   SOC {result.current_occupation.code}
                 </span>
               )}
@@ -300,7 +300,7 @@ export default function CareerPathway() {
                         <h3 className="font-medium text-slate-900">
                           {p.title}
                           {p.code && (
-                            <span className="ml-2 text-xs font-mono text-slate-400">{p.code}</span>
+                            <span className="ml-2 text-xs font-mono text-slate-500">{p.code}</span>
                           )}
                         </h3>
                         <ReadinessBadge readiness={p.readiness} />
@@ -311,7 +311,7 @@ export default function CareerPathway() {
                       {p.wage ? (
                         <WageLine wage={p.wage} change={p.pay_change} />
                       ) : (
-                        <p className="text-xs text-slate-400 mt-2">Wage data not configured</p>
+                        <p className="text-xs text-slate-500 mt-2">Wage data not configured</p>
                       )}
                       <MoveFacts training={p.training} gaps={p.skill_gaps} links={p.links} />
                     </div>
@@ -355,10 +355,10 @@ function WageLine({ wage, change }: {
     <p className="text-sm text-slate-700 mt-2">
       {median && <span className="font-semibold">{median} median</span>}
       {change != null && <PayChange change={change} />}
-      {median && mean && <span className="text-slate-400"> · </span>}
+      {median && mean && <span className="text-slate-500"> · </span>}
       {mean && <span>{mean} mean</span>}
-      {wage.year && <span className="text-slate-400"> · {wage.year}</span>}
-      {wage.source && <span className="text-slate-400"> · {wage.source}</span>}
+      {wage.year && <span className="text-slate-500"> · {wage.year}</span>}
+      {wage.source && <span className="text-slate-500"> · {wage.source}</span>}
     </p>
   )
 }
@@ -544,7 +544,7 @@ function SummaryPanel({ result, narrating, error, onRequest }: {
             </ul>
           </div>
         )}
-        <p className="text-xs text-slate-400 mt-3">Written by a model from the facts above; the facts win where they differ.</p>
+        <p className="text-xs text-slate-500 mt-3">Written by a model from the facts above; the facts win where they differ.</p>
       </section>
     )
   }
@@ -632,7 +632,7 @@ function HiringSection({ hiring }: { hiring: NonNullable<CareerPathwayResult['hi
       {hiring.top_employers.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-            <Building2 className="w-4 h-4 text-slate-400" /> Top employers
+            <Building2 className="w-4 h-4 text-slate-500" /> Top employers
           </h3>
           <ul className="divide-y divide-slate-100">
             {hiring.top_employers.map((e) => (
@@ -641,7 +641,7 @@ function HiringSection({ hiring }: { hiring: NonNullable<CareerPathwayResult['hi
                 <span className="text-slate-500">
                   {e.postings.toLocaleString()} postings
                   {e.average_salary != null && (
-                    <span className="text-slate-400"> · {money(e.average_salary)} avg</span>
+                    <span className="text-slate-500"> · {money(e.average_salary)} avg</span>
                   )}
                 </span>
               </li>
@@ -676,12 +676,12 @@ function HiringSection({ hiring }: { hiring: NonNullable<CareerPathwayResult['hi
       {history.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-            <TrendingUp className="w-4 h-4 text-slate-400" /> Average advertised pay over time
+            <TrendingUp className="w-4 h-4 text-slate-500" /> Average advertised pay over time
           </h3>
           <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
             {history.map(([month, value]) => (
               <li key={month} className="text-slate-700">
-                <span className="text-slate-400">{month}</span>{' '}
+                <span className="text-slate-500">{month}</span>{' '}
                 <span className="font-medium tabular-nums">{money(value)}</span>
               </li>
             ))}

@@ -7,7 +7,7 @@ const STYLES: Record<ApplicationStatus, { label: string; cls: string }> = {
   interview: { label: 'Interview', cls: 'bg-violet-50 text-violet-700 border-violet-200' },
   offer: { label: 'Offer', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   rejected: { label: 'Not selected', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
-  withdrawn: { label: 'Withdrawn', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
+  withdrawn: { label: 'Withdrawn', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
 }
 
 export default function StatusBadge({ status }: { status: ApplicationStatus }) {

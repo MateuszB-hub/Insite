@@ -165,7 +165,7 @@ export default function MyApplications() {
   const empty = !loading && counts?.all === 0 && !search.trim()
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">My Applications</h1>
         <p className="text-slate-500 mt-1">
@@ -201,7 +201,7 @@ export default function MyApplications() {
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}>
                 {t.label}
-                {counts && <span className="ml-1.5 text-xs text-slate-400">{counts[t.key]}</span>}
+                {counts && <span className="ml-1.5 text-xs text-slate-500">{counts[t.key]}</span>}
               </button>
             ))}
           </div>
@@ -209,7 +209,7 @@ export default function MyApplications() {
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <label className="relative flex-1">
               <span className="sr-only">Search applications</span>
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input id="app-search" value={query} onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search job title or company"
                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -225,7 +225,7 @@ export default function MyApplications() {
           </div>
 
           {loading ? (
-            <div className="flex items-center gap-2 text-slate-400 py-10 justify-center">
+            <div className="flex items-center gap-2 text-slate-500 py-10 justify-center">
               <Loader2 className="w-5 h-5 animate-spin" /> Loading…
             </div>
           ) : apps.length === 0 ? (
@@ -245,7 +245,7 @@ export default function MyApplications() {
                           <a href={a.job_url} target="_blank" rel="noopener noreferrer"
                             className="font-semibold text-slate-900 hover:text-indigo-700 inline-flex items-center gap-1">
                             {a.position_title}
-                            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                            <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                           </a>
                         ) : (
                           <span className="font-semibold text-slate-900">{a.position_title}</span>
@@ -255,7 +255,7 @@ export default function MyApplications() {
                             {[a.company, a.job_location].filter(Boolean).join(' · ')}
                           </p>
                         )}
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           Added {when(a.created_at)}
                           {a.submitted_at && ` · Applied ${when(a.submitted_at)}`}
                         </p>
@@ -294,7 +294,7 @@ export default function MyApplications() {
                       )}
                       <button type="button" disabled={busy === a.id} onClick={() => remove(a)}
                         aria-label={`Remove ${a.position_title}`}
-                        className="text-xs text-slate-400 hover:text-red-600 inline-flex items-center gap-1 disabled:opacity-50">
+                        className="text-xs text-slate-500 hover:text-red-600 inline-flex items-center gap-1 disabled:opacity-50">
                         <Trash2 className="w-3.5 h-3.5" /> Remove
                       </button>
                     </div>
@@ -303,7 +303,7 @@ export default function MyApplications() {
                       <ol className="mt-3 space-y-1 text-xs text-slate-500 border-t border-slate-100 pt-3">
                         {a.events.map((e, i) => (
                           <li key={i} className="flex gap-3">
-                            <span className="text-slate-400 w-20 shrink-0">{when(e.occurred_at)}</span>
+                            <span className="text-slate-500 w-20 shrink-0">{when(e.occurred_at)}</span>
                             <span className={e.is_undo ? 'italic' : ''}>
                               {e.is_undo ? `Undo → ${label(e.to_status)}` : label(e.to_status)}
                             </span>

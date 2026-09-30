@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
               </div>
               <h1 className="text-xl font-semibold text-slate-900 mb-2">Check your inbox</h1>
               <p className="text-sm text-slate-600">{sent}</p>
-              <p className="text-xs text-slate-400 mt-3">
+              <p className="text-xs text-slate-500 mt-3">
                 The link expires in 30 minutes and can only be used once.
               </p>
             </>
