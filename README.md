@@ -19,8 +19,12 @@ drivers.
 |---|---|
 | **Career Pathway** | From your current role: realistic next steps, official wages (BLS), who is hiring (Adzuna), and a readable summary |
 | **Your skills also apply to** | Other occupations your skills transfer to, labelled *likely qualify now* vs *needs more training*, with the pay difference |
-| **Honest job filter** | Every posting says whether its salary is **employer-stated or estimated**, and whether "remote" is **really remote** |
+| **Honest job filter** | Every posting says whether its salary is **employer-stated or estimated**, and whether "remote" is **really remote**; filters say what they hid and why, and can show it |
+| **Find Roles that understands places** | Typos, ZIP codes, NYC boroughs, "Bay Area", "Remote", a search radius, and a plain "US only" for cities abroad |
+| **Pay in your own terms** | With a home city in your profile, each job's pay is also shown in your area's living costs (BEA Regional Price Parities) |
+| **Fill in from your résumé** | Upload a PDF (or a LinkedIn "Save to PDF") and the profile form fills itself in; every field is checked against the text, and nothing is saved until you press Save |
 | **Application tracking** | Mark live postings as applied and record what happened next; survives reposts |
+| **Works everywhere** | Chrome, Edge, Firefox and Safari; phones, tablets and desktops; checked against WCAG 2.1 AA |
 | **Your data, your call** | Export everything you've entered from the profile page; account erasure is built into the API (`DELETE /api/me`) |
 
 ### Why the honest filter exists
@@ -74,10 +78,12 @@ backend/app/
   services/labor/          O*NET, BLS, Adzuna clients + skills taxonomy
   services/providers/      synthesis engines: ollama, anthropic, mock
   services/job_search.py   honest filter: salary provenance, remote verification
+  services/places.py       typed locations -> real US places (Census)
+  services/resume.py       résumé PDF -> checked profile suggestions (local model)
   middleware/              CSRF, security headers
-  data/                    vendored O*NET occupations and relatedness graph
-backend/tests/             159 tests (SQLite, no network, no secrets)
-frontend/e2e/              browser checks (Playwright)
+  data/                    vendored data, rebuilt by app/scripts/vendor_*.py
+backend/tests/             ~440 tests (SQLite, no network, no secrets)
+frontend/e2e/              browser checks (Playwright), incl. every browser x size + axe
 ```
 
 ## Data sources
@@ -85,7 +91,9 @@ frontend/e2e/              browser checks (Playwright)
 | Need | Source | Notes |
 |---|---|---|
 | Occupations, related roles, skills | **O*NET** | Public database files vendored in `backend/app/data/` (867 occupations, 15,933 relatedness edges, 35-dimension skill profiles) |
-| Wages | **BLS OEWS** | Needs a free key. Verified against the live API: keyless access returns no wage series at all |
+| Wages | **BLS OEWS** | Stored in `oews.json` (a free key refreshes it once a year); keyless access returns no wage series at all |
+| Places, ZIP codes | **Census** | Gazetteer, population estimates and ZIP relationship files, stored in `places.json` and `zips.json` |
+| Living costs | **BEA** | Regional Price Parities by state and metro, stored in `col.json` |
 | Hiring, top employers, pay spread | **Adzuna** | Free tier |
 | Recent context | **Tavily** | Optional; web search is garnish, not the substrate |
 
@@ -123,9 +131,11 @@ labelled fallbacks. `GET /api/labor/status` shows which sources are live.
 ### Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q          # 159 tests
+cd backend && .venv/bin/python -m pytest -q          # ~440 tests
 cd frontend && npm run typecheck && npm run build
 cd frontend && npm run demo        # browser checks; needs ./dev.sh running
+cd frontend && npm run demo:matrix # every page in Chromium, Firefox, WebKit at
+                                   # desktop/tablet/phone size + accessibility (axe)
 ```
 
 ## Engines
