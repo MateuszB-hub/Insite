@@ -163,7 +163,7 @@ export default function Home() {
   const doneCount = steps.filter((s) => s.done).length
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
       <header>
         <h1 className="text-3xl font-bold text-slate-900">
           {firstName ? `Welcome, ${firstName}` : 'Welcome'}
@@ -218,7 +218,7 @@ export default function Home() {
         {profileLoaded && !role && (
           <div className="bg-white rounded-xl border border-dashed border-slate-300 p-6 text-slate-600">
             Add your role (and where you want to work) to your{' '}
-            <Link to="/profile" className="text-indigo-600 hover:underline">profile</Link>, and
+            <Link to="/profile" className="text-indigo-700 underline hover:text-indigo-900">profile</Link>, and
             jobs posted in the past {PICK_DAYS} days will show up here.
           </div>
         )}
@@ -246,7 +246,7 @@ export default function Home() {
         {picks && !picksLoading && !picksError && picks.length === 0 && (
           <div className="bg-white rounded-xl border border-slate-200 p-6 text-slate-600">
             No new jobs matched in the past {PICK_DAYS} days.{' '}
-            <Link to={jobsLink(profile)} className="text-indigo-600 hover:underline">
+            <Link to={jobsLink(profile)} className="text-indigo-700 underline hover:text-indigo-900">
               Try a wider search
             </Link>.
           </div>
@@ -261,7 +261,7 @@ export default function Home() {
                   <div className="min-w-0">
                     <a href={job.url} target="_blank" rel="noopener noreferrer"
                       className="font-semibold text-slate-900 hover:text-indigo-700 inline-flex items-center gap-1">
-                      {job.title} <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                      {job.title} <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                     </a>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500">
                       {job.company && (
@@ -298,7 +298,7 @@ export default function Home() {
         {apps && apps.counts.all === 0 && (
           <div className="bg-white rounded-xl border border-dashed border-slate-300 p-6 text-slate-600">
             Nothing tracked yet. Press "Mark as applied" on a job in{' '}
-            <Link to={jobsLink(profile)} className="text-indigo-600 hover:underline">Find Roles</Link>{' '}
+            <Link to={jobsLink(profile)} className="text-indigo-700 underline hover:text-indigo-900">Find Roles</Link>{' '}
             and it will be followed here.
           </div>
         )}

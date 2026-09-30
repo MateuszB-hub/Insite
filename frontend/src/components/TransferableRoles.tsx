@@ -52,7 +52,7 @@ export default function TransferableRoles({
                 <div className="min-w-0">
                   <h3 className="font-medium text-slate-900">
                     {role.title}
-                    <span className="ml-2 text-xs font-mono text-slate-400">
+                    <span className="ml-2 text-xs font-mono text-slate-500">
                       {role.code}
                     </span>
                   </h3>

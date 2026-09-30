@@ -15,7 +15,7 @@ export function SalaryLine({ job }: { job: JobPosting }) {
 
   if (job.salary_source === 'absent' || !range) {
     return (
-      <span className="inline-flex items-center gap-1 text-sm text-slate-400">
+      <span className="inline-flex items-center gap-1 text-sm text-slate-500">
         <CircleHelp className="w-3.5 h-3.5" /> No salary stated
       </span>
     )

@@ -18,7 +18,8 @@
     "demo:dates": "node e2e/dates-demo.mjs",
     "demo:places": "node e2e/places-demo.mjs",
     "demo:round3": "node e2e/round3-demo.mjs",
-    "demo:col": "node e2e/col-demo.mjs"
+    "demo:col": "node e2e/col-demo.mjs",
+    "demo:matrix": "node e2e/matrix-demo.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.510.0",
@@ -27,6 +28,7 @@
     "react-router-dom": "^7.6.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@tailwindcss/vite": "^4.1.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",

@@ -55,7 +55,7 @@ export default function ProviderPicker({
                 isSelected
                   ? 'bg-indigo-600 border-indigo-600 text-white'
                   : isDisabled
-                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
                     : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-400 hover:text-indigo-700'
               }`}
             >

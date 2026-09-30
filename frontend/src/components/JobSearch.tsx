@@ -469,7 +469,7 @@ export default function JobSearch() {
     'w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition'
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Find Roles</h1>
         <p className="text-slate-500 mt-1">
@@ -492,7 +492,7 @@ export default function JobSearch() {
           <div className="flex-1">
             <label htmlFor="where" className="block text-sm font-medium text-slate-700 mb-1">
               Locations{' '}
-              <span className="text-slate-400 font-normal">
+              <span className="text-slate-500 font-normal">
                 (optional, US only, up to {MAX_JOB_LOCATIONS})
               </span>
             </label>
@@ -596,7 +596,7 @@ export default function JobSearch() {
             <select id="distance" value={distance} onChange={(e) => setDistance(Number(e.target.value))}
               disabled={!places.length && !placeDraft.trim()}
               title={!places.length && !placeDraft.trim() ? 'Add a location first' : undefined}
-              className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-50 disabled:text-slate-400">
+              className="rounded-lg border border-slate-300 text-sm py-1 pl-2 pr-7 focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-50 disabled:text-slate-500">
               {[5, 10, 25, 50].map((m) => <option key={m} value={m}>{m} miles</option>)}
             </select>
           </label>
@@ -705,7 +705,7 @@ export default function JobSearch() {
           {folded > 0 && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
               <p className="text-sm text-slate-700 flex items-center gap-1.5">
-                <Copy className="w-4 h-4 text-slate-400" />
+                <Copy className="w-4 h-4 text-slate-500" />
                 {folded} duplicate advert{folded === 1 ? '' : 's'} folded in — the same
                 job posted repeatedly counts once here.
               </p>
@@ -715,7 +715,7 @@ export default function JobSearch() {
           {excluded > 0 && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
               <p className="text-sm text-slate-700 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-slate-400" />
+                <Info className="w-4 h-4 text-slate-500" />
                 Showing {data.postings.length + data.estimated_matches.length} of{' '}
                 {data.total_available?.toLocaleString() ?? 'many'} — {excluded} hidden by your filters
               </p>
@@ -803,7 +803,7 @@ export default function JobSearch() {
               {loose.length > 0 && (
                 <section className="mt-8" aria-labelledby="loose-heading" data-testid="loose-matches">
                   <h2 id="loose-heading" className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <Info className="w-4 h-4 text-slate-400" />
+                    <Info className="w-4 h-4 text-slate-500" />
                     Also mention "{q.trim()}", but not in the job title
                   </h2>
                   <p className="text-sm text-slate-500 mt-1 mb-3">

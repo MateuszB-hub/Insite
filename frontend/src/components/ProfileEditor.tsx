@@ -176,7 +176,7 @@ export default function ProfileEditor() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center gap-2 text-slate-400">
+      <div className="p-8 flex items-center gap-2 text-slate-500">
         <Loader2 className="w-5 h-5 animate-spin" /> Loading…
       </div>
     )
@@ -185,7 +185,7 @@ export default function ProfileEditor() {
   const field = 'w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition'
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Your Profile</h1>
         <p className="text-slate-500 mt-1">
@@ -207,7 +207,7 @@ export default function ProfileEditor() {
             {offerFor('current_role')}
           </div>
           <div>
-            <label htmlFor="ind" className="block text-sm font-medium text-slate-700 mb-1">Industry<span className="ml-1.5 text-xs font-normal text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.industry} /></label>
+            <label htmlFor="ind" className="block text-sm font-medium text-slate-700 mb-1">Industry<span className="ml-1.5 text-xs font-normal text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.industry} /></label>
             <input id="ind" className={field} value={profile.industry ?? ''}
               onChange={(e) => setProfile({ ...profile, industry: e.target.value })}
               placeholder="Fintech" />
@@ -215,7 +215,7 @@ export default function ProfileEditor() {
             {offerFor('industry')}
           </div>
           <div>
-            <label htmlFor="yrs" className="block text-sm font-medium text-slate-700 mb-1">Years of experience<span className="ml-1.5 text-xs font-normal text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.years_experience} /></label>
+            <label htmlFor="yrs" className="block text-sm font-medium text-slate-700 mb-1">Years of experience<span className="ml-1.5 text-xs font-normal text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.years_experience} /></label>
             <input id="yrs" type="number" min={0} max={70} className={field}
               value={profile.years_experience ?? ''}
               onChange={(e) => setProfile({
@@ -237,7 +237,7 @@ export default function ProfileEditor() {
 
         <div>
           <label htmlFor="skills" className="block text-sm font-medium text-slate-700 mb-1">
-            Skills <span className="text-slate-400 font-normal">(comma separated)</span><span className="ml-1.5 text-xs font-normal text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.skills} />
+            Skills <span className="text-slate-500 font-normal">(comma separated)</span><span className="ml-1.5 text-xs font-normal text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.skills} />
           </label>
           <input id="skills" className={field} value={skillsText}
             onChange={(e) => setSkillsText(e.target.value)}
@@ -248,7 +248,7 @@ export default function ProfileEditor() {
 
         <div>
           <label htmlFor="certs" className="block text-sm font-medium text-slate-700 mb-1">
-            Certifications and licences <span className="text-slate-400 font-normal">(one per line)</span><span className="ml-1.5 text-xs font-normal text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.certifications} />
+            Certifications and licences <span className="text-slate-500 font-normal">(one per line)</span><span className="ml-1.5 text-xs font-normal text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.certifications} />
           </label>
           <textarea id="certs" rows={3} className={field} value={certsText}
             onChange={(e) => setCertsText(e.target.value)}
@@ -258,7 +258,7 @@ export default function ProfileEditor() {
         </div>
 
         <div>
-          <label htmlFor="sum" className="block text-sm font-medium text-slate-700 mb-1">Summary<span className="ml-1.5 text-xs font-normal text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.summary} /></label>
+          <label htmlFor="sum" className="block text-sm font-medium text-slate-700 mb-1">Summary<span className="ml-1.5 text-xs font-normal text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">Nice to have</span><FromResume source={filled.summary} /></label>
           <textarea id="sum" rows={4} className={field} value={profile.summary ?? ''}
             onChange={(e) => setProfile({ ...profile, summary: e.target.value })}
             placeholder="A short professional summary." />
