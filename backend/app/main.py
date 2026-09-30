@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # loading .env afterwards silently leaves every one of them on its default.
 load_dotenv()
 
-from fastapi import FastAPI  # noqa: E402
+from fastapi import FastAPI, Response  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from app.middleware.csrf import CSRFMiddleware  # noqa: E402
@@ -83,6 +83,47 @@ SERVE_STATIC = os.getenv("SERVE_STATIC", "").lower() in {"1", "true", "yes"}
 @app.get("/api/health")
 async def health_check() -> dict:
     return {"status": "ok", "service": "insite-api", "version": app.version}
+
+
+@app.get("/api/health/ready")
+async def readiness(response: Response) -> dict:
+    """For an outside uptime monitor: is the site actually usable?
+
+    /api/health only says the process answers; it stayed "ok" with the
+    database down. This asks the database for a row and the local model for
+    its version. No database: 503, the site is down. No model: 200 but
+    "degraded" -- everything except résumé reading and written summaries
+    still works. Says nothing more than ok / down / off.
+    """
+    import asyncio
+
+    import httpx
+    from sqlalchemy import text
+
+    from app.db.base import engine
+    from app.services.providers.ollama_provider import DEFAULT_HOST
+
+    def database() -> str:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return "ok"
+        except Exception:
+            return "down"
+
+    async def model() -> str:
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                (await client.get(f"{DEFAULT_HOST}/api/version")).raise_for_status()
+            return "ok"
+        except Exception:
+            return "off"
+
+    db, llm = await asyncio.gather(asyncio.to_thread(database), model())
+    status = "down" if db != "ok" else "degraded" if llm != "ok" else "ok"
+    if status == "down":
+        response.status_code = 503
+    return {"status": status, "database": db, "local_model": llm}
 
 
 if SERVE_STATIC:

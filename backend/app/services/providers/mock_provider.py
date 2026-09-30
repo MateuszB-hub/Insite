@@ -18,6 +18,7 @@ class MockProvider(SynthesisProvider):
         self,
         prompt: str,
         schema: dict[str, Any],
+        purpose: str = "text",
     ) -> dict[str, Any]:
         # The prompt carries the industry; echo enough to prove the wiring
         # without pretending to have done research.

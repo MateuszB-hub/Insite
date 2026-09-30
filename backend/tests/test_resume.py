@@ -118,7 +118,7 @@ def test_instructions_hidden_in_a_resume_change_nothing():
 class FakeModel:
     label = "Local model (test)"
 
-    async def generate_json(self, prompt, schema):
+    async def generate_json(self, prompt, schema, purpose="text"):
         assert "=== RÉSUMÉ START ===" in prompt and "Nebraska Medical Center" in prompt
         return EXTRACTED
 
@@ -170,7 +170,7 @@ def test_a_slow_model_gives_a_plain_message(monkeypatch):
     # model still ends in words the person can act on.
 
     class SlowModel(FakeModel):
-        async def generate_json(self, prompt, schema):
+        async def generate_json(self, prompt, schema, purpose="text"):
             await asyncio.sleep(5)
 
     async def slow(name=None):

@@ -51,6 +51,7 @@ class AnthropicProvider(SynthesisProvider):
         self,
         prompt: str,
         schema: dict[str, Any],
+        purpose: str = "text",
     ) -> dict[str, Any]:
         usable, reason = await self.health()
         if not usable:

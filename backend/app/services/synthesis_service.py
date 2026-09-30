@@ -95,7 +95,7 @@ async def synthesize_findings(
     )
 
     try:
-        parsed = await provider.generate_json(prompt, REPORT_SCHEMA)
+        parsed = await provider.generate_json(prompt, REPORT_SCHEMA, purpose="future_of_work")
     except ProviderUnavailable:
         # Let the route translate this into a 503 with a usable message.
         raise

@@ -79,7 +79,7 @@ def test_narrative_cannot_introduce_numbers():
     """The schema has no numeric field; merged output keeps our wage objects."""
     class FakeProvider:
         name, label = "fake", "Fake"
-        async def generate_json(self, prompt, schema):
+        async def generate_json(self, prompt, schema, purpose="text"):
             return {
                 "summary": "Go for it.",
                 "pathways": [{"code": "15-2051", "rationale": "adjacent",

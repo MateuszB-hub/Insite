@@ -9,9 +9,12 @@ Talks to the Ollama REST API directly over httpx rather than adding the
 dependency surface small.
 """
 
+import asyncio
 import json
 import logging
 import os
+import time
+import weakref
 from typing import Any
 
 import httpx
@@ -29,6 +32,20 @@ DEFAULT_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "300"))
 # and the model then ran on to the timeout without closing its JSON. So the
 # window is sized to each prompt, and the answer's length is capped.
 MAX_OUTPUT_TOKENS = int(os.getenv("OLLAMA_NUM_PREDICT", "2048"))
+# The host is a fanless laptop: each run is 30-70 s at full load, and two at
+# once double the heat for no gain (one GPU). So one run at a time, queued
+# here; and the model leaves memory a minute after the last run rather than
+# Ollama's default five.
+KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE_SITE", "1m")
+_one_at_a_time: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore]" = (
+    weakref.WeakKeyDictionary())
+
+
+def _gate() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    if loop not in _one_at_a_time:
+        _one_at_a_time[loop] = asyncio.Semaphore(1)
+    return _one_at_a_time[loop]
 MAX_CONTEXT = int(os.getenv("OLLAMA_NUM_CTX_MAX", "16384"))
 MIN_CONTEXT = 4096
 
@@ -108,6 +125,7 @@ class OllamaProvider(SynthesisProvider):
         self,
         prompt: str,
         schema: dict[str, Any],
+        purpose: str = "text",
     ) -> dict[str, Any]:
         usable, reason = await self.health()
         if not usable:
@@ -120,6 +138,7 @@ class OllamaProvider(SynthesisProvider):
             # Ollama supports a JSON schema here, which constrains decoding and
             # is far more reliable than asking the model to behave.
             "format": schema,
+            "keep_alive": KEEP_ALIVE,
             "options": {
                 # Low temperature: this is an extraction/summarization task.
                 "temperature": 0.3,
@@ -128,11 +147,20 @@ class OllamaProvider(SynthesisProvider):
             },
         }
 
+        queued = time.monotonic()
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(f"{self.host}/api/chat", json=request)
-                response.raise_for_status()
-                payload = response.json()
+            async with _gate():
+                started = time.monotonic()
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(f"{self.host}/api/chat", json=request)
+                    response.raise_for_status()
+                    payload = response.json()
+            # One line per run, no content: what it was for and what it cost,
+            # so the host's load can be told apart from testing.
+            logger.info(
+                "model run: purpose=%s model=%s waited=%.1fs took=%.1fs prompt_tokens=%s out_tokens=%s",
+                purpose, request["model"], started - queued, time.monotonic() - started,
+                payload.get("prompt_eval_count"), payload.get("eval_count"))
         except httpx.TimeoutException as exc:
             raise ProviderUnavailable(
                 f"Local model timed out after {self.timeout:.0f}s. Try a smaller "
