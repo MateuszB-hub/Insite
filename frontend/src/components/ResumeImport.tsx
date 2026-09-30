@@ -45,10 +45,25 @@ export default function ResumeImport({ onSuggestion }: {
         <div className="min-w-0">
           <h2 id="resume-import" className="font-semibold text-indigo-900">Fill in from your résumé</h2>
           <p className="text-sm text-slate-600 mt-1">
-            Upload a PDF and the form below fills itself in. A LinkedIn profile works too:
-            on LinkedIn, open your profile, click <span className="font-medium">More</span>, then{' '}
-            <span className="font-medium">Save to PDF</span>.
+            Click <span className="font-medium">Upload résumé (PDF)</span> and pick your résumé; the
+            form below fills itself in for you to check. A Word résumé? Save it as a PDF first
+            (File → Save As → PDF).
           </p>
+          {/* A director couldn't follow "click More": LinkedIn renamed it
+              Resources, and the phone app can't save a PDF at all. */}
+          <details className="text-sm text-slate-600 mt-1.5">
+            <summary className="cursor-pointer text-indigo-700 hover:underline">
+              How do I get my LinkedIn profile as a PDF?
+            </summary>
+            <ol className="list-decimal ml-5 mt-1.5 space-y-0.5">
+              <li>On a computer (the LinkedIn phone app can't do this), open LinkedIn.</li>
+              <li>Click your photo at the top, then <span className="font-medium">View profile</span>.</li>
+              <li>Under your name, click <span className="font-medium">Resources</span> (called{' '}
+                <span className="font-medium">More</span> on some screens), then{' '}
+                <span className="font-medium">Save to PDF</span>. The PDF downloads.</li>
+              <li>Come back here, click <span className="font-medium">Upload résumé (PDF)</span> and pick it.</li>
+            </ol>
+          </details>
           <p className="text-xs text-slate-500 mt-2 flex items-start gap-1.5">
             <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600" />
             Read by Insite's own AI model on Insite's own computer, then discarded: the file
