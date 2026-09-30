@@ -378,7 +378,7 @@ async def suggest_from_text(text: str, pages: int) -> dict:
                           "right now. Please try again later, or fill in the form by hand.") from exc
     try:
         extracted = await asyncio.wait_for(
-            provider.generate_json(build_prompt(text), SCHEMA), MODEL_TIMEOUT_S)
+            provider.generate_json(build_prompt(text), SCHEMA, purpose="resume"), MODEL_TIMEOUT_S)
     except asyncio.TimeoutError as exc:
         logger.warning("résumé extraction took over %.0fs", MODEL_TIMEOUT_S)
         raise ResumeError("Reading this résumé is taking too long right now. Please try "

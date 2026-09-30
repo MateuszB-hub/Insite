@@ -272,7 +272,7 @@ async def attach_narrative(
         return report
 
     try:
-        parsed = await provider.generate_json(build_prompt(report), NARRATIVE_SCHEMA)
+        parsed = await provider.generate_json(build_prompt(report), NARRATIVE_SCHEMA, purpose="pathway_summary")
     except Exception as exc:
         logger.warning("narrative generation failed: %s", exc)
         report["narrative"] = None

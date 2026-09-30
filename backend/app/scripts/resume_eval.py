@@ -2,8 +2,9 @@
 
     python -m app.scripts.resume_eval [ollama-model ...]   (default: OLLAMA_MODEL)
 
-Four invented résumés across fields -- nurse, electrician, QA lead, and a
-LinkedIn "Save to PDF"-style export -- built as real PDFs in code (no real
+Five invented résumés -- nurse, electrician, QA lead, a LinkedIn "Save to
+PDF"-style export, and a long 12-job one with its certifications at the end
+(the shape that broke import live) -- built as real PDFs in code (no real
 people). Each runs through the whole pipeline (read PDF, local model, check
 against the text) and is scored on:
 
@@ -92,6 +93,41 @@ RESUMES = [
         "certs": {"certified public accountant"}}),
 ]
 
+
+def _long_resume() -> list[str]:
+    """A long, dense résumé like the real 7-page one that broke import: twelve
+    jobs with full bullets, skills, and certifications at the very END -- the
+    part a too-small context or text cap silently cut (P10)."""
+    employers = ["Northwind Logistics", "Contoso Freight", "Fabrikam Supply", "Tailspin Distribution",
+                 "Litware Transport", "Adventure Works Cargo", "Proseware Shipping", "Wingtip Carriers",
+                 "Humongous Haulage", "Coho Fleet Services", "Lucerne Freightways", "Margie Logistics"]
+    titles = ["Director of Operations", "Senior Operations Manager", "Operations Manager",
+              "Regional Logistics Manager", "Logistics Manager", "Distribution Supervisor",
+              "Warehouse Supervisor", "Shift Supervisor", "Inventory Coordinator",
+              "Logistics Coordinator", "Shipping Clerk", "Warehouse Associate"]
+    lines = ["Morgan Reyes", "Kansas City, MO | morgan.r@example.com | (555) 010-2233",
+             "SUMMARY", "Operations leader across freight, warehousing and distribution.", "EXPERIENCE"]
+    end_year = None
+    for i, (title, employer) in enumerate(zip(titles, employers)):
+        start = 2024 - 2 * i
+        end = "Present" if i == 0 else f"Dec {start + 1}"
+        lines.append(f"{title}, {employer}, Jan {start} - {end}")
+        for n in range(6):
+            lines.append(f"- Led cross-site initiative {n + 1} at {employer}: cut dock-to-stock time, "
+                         f"rebuilt slotting, trained crews of {10 + n} on safety and scanning workflows, "
+                         f"and reported weekly throughput, cost per unit and on-time delivery to leadership.")
+        end_year = start
+    lines += ["EDUCATION", f"B.S. Supply Chain Management, State University, {end_year - 4} - {end_year}",
+              "SKILLS: Warehouse management systems; Lean; Six Sigma; Forklift operation; Budgeting",
+              "CERTIFICATIONS: APICS CSCP; OSHA 30; Certified Six Sigma Green Belt"]
+    return lines
+
+
+RESUMES.append(("long, 12 jobs", _long_resume(),
+                {"role": "director of operations", "location": "kansas city", "years": 24,
+                 "skills": {"lean", "six sigma", "budgeting"},
+                 "certs": {"apics cscp", "osha 30", "six sigma green belt"}}))
+
 TODAY = date(2026, 9, 26)
 
 
@@ -100,10 +136,11 @@ def _has(found: list[str], wanted: str) -> bool:
 
 
 async def run(model: str | None) -> None:
-    if model:
-        os.environ["OLLAMA_MODEL"] = model
-    # Import after choosing the model: the provider reads it at import.
+    # The model is passed to the provider directly: setting OLLAMA_MODEL here
+    # only worked for the first model -- the provider reads it once, at import,
+    # so a second model in the same run silently re-tested the first.
     from app.services import resume
+    from app.services.providers.ollama_provider import OllamaProvider
     from tests.pdf_fixtures import make_pdf
 
     total = right = invented = 0
@@ -111,7 +148,7 @@ async def run(model: str | None) -> None:
     for name, lines, want in RESUMES:
         started = time.monotonic()
         text, _ = await resume.read_pdf(make_pdf(lines))
-        provider = await resume.get_provider("ollama")
+        provider = OllamaProvider(model=model) if model else await resume.get_provider("ollama")
         raw = await provider.generate_json(resume.build_prompt(text), resume.SCHEMA)
         got = resume.check(raw, text, TODAY)
         secs = time.monotonic() - started

@@ -65,3 +65,57 @@ def test_an_answer_cut_off_at_the_cap_is_reported_not_parsed(monkeypatch):
         monkeypatch, {"message": {"content": '{"jobs": [{"title": "Nur'}, "done_reason": "length"}, {})
     with pytest.raises(ProviderUnavailable, match="length limit"):
         asyncio.run(provider.generate_json("prompt", {"type": "object"}))
+
+
+# --- the host is a fanless laptop: one run at a time, unload soon, log cost ---
+
+def test_each_request_unloads_the_model_soon(monkeypatch):
+    seen: dict = {}
+    provider = _provider_answering(
+        monkeypatch, {"message": {"content": '{"ok": true}'}, "done_reason": "stop"}, seen)
+    asyncio.run(provider.generate_json("prompt", {"type": "object"}))
+    assert seen["keep_alive"] == op.KEEP_ALIVE == "1m"
+
+
+def test_two_runs_at_once_take_turns(monkeypatch):
+    provider = _provider_answering(
+        monkeypatch, {"message": {"content": '{"ok": true}'}, "done_reason": "stop"}, {})
+    running, most = 0, 0
+    real_post = op.httpx.AsyncClient
+
+    class Slow:
+        def __init__(self, **kw):
+            self.inner = real_post(**kw)
+
+        async def __aenter__(self):
+            await self.inner.__aenter__()
+            return self
+
+        async def __aexit__(self, *exc):
+            return await self.inner.__aexit__(*exc)
+
+        async def post(self, *a, **kw):
+            nonlocal running, most
+            running += 1
+            most = max(most, running)
+            await asyncio.sleep(0.05)
+            running -= 1
+            return await self.inner.post(*a, **kw)
+
+    monkeypatch.setattr(op.httpx, "AsyncClient", Slow)
+
+    async def both():
+        await asyncio.gather(provider.generate_json("a", {}), provider.generate_json("b", {}))
+    asyncio.run(both())
+    assert most == 1
+
+
+def test_each_run_is_logged_by_purpose_without_content(monkeypatch, caplog):
+    provider = _provider_answering(
+        monkeypatch, {"message": {"content": '{"ok": true}'}, "done_reason": "stop",
+                      "prompt_eval_count": 12, "eval_count": 3}, {})
+    with caplog.at_level("INFO", logger=op.__name__):
+        asyncio.run(provider.generate_json("SECRET RÉSUMÉ TEXT", {}, purpose="resume"))
+    line = next(r.getMessage() for r in caplog.records if "model run" in r.getMessage())
+    assert "purpose=resume" in line and "prompt_tokens=12" in line and "out_tokens=3" in line
+    assert "SECRET" not in line

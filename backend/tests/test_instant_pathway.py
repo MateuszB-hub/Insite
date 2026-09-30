@@ -91,7 +91,7 @@ def _fake_model(monkeypatch, readiness="ready"):
     class FakeProvider:
         name, label = "fake", "Fake"
 
-        async def generate_json(self, prompt, schema):
+        async def generate_json(self, prompt, schema, purpose="text"):
             calls.append(prompt)
             return {
                 "summary": "Worth a look.",

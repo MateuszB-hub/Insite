@@ -43,6 +43,7 @@ class SynthesisProvider(ABC):
         self,
         prompt: str,
         schema: dict[str, Any],
+        purpose: str = "text",
     ) -> dict[str, Any]:
         """Return a JSON object conforming to `schema`.
 
